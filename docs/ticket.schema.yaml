@@ -1,0 +1,236 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: cat-herder ticket
+description: |
+  One ticket as YAML. Reading, creating and editing all use this same shape.
+
+  Nothing is required by the schema, because each operation uses a different part of it:
+
+  - **Reading** returns every field. Empty fields are `null`.
+  - **Creating** takes the writable fields, and any `readOnly` field explodes. `project` is required.
+  - **Editing** takes any subset. A missing field stays as it is, and `null` clears it.
+    Each field provided is compared with the current ticket: if it's the same, nothing is sent;
+    if it's different, it's sent to the source, or it explodes if it's `readOnly`.
+
+  Allowed values for `type`, `status` and `links.relation` come from the source. A value the source
+  doesn't accept is a source error.
+
+  Source, stable source ID and fetched at are stored but not part of this format.
+type: object
+additionalProperties: false
+properties:
+  key:
+    type: string
+    readOnly: true
+    description: The source's key. Qualified, as in `jira:SAT-7`, when a tie between sources was broken by directory.
+  title:
+    type: string
+  project:
+    type: string
+    description: Slug of the project. Required when creating, and read-only when editing.
+  type:
+    type: string
+    description: The source's name for the ticket type.
+  status:
+    type: string
+    description: The source's name for the status, with no translation.
+  assignee:
+    type: [string, 'null']
+    description: Person slug. `unknown` when the source's user has no entry in `people`, which can't be written.
+  points:
+    type: [number, 'null']
+    minimum: 0
+  estimated_hours:
+    type: [number, 'null']
+    minimum: 0
+    description: Independent from `points`, and either can be empty.
+  spent_hours:
+    readOnly: true
+    description: Sum of the ticket's stored time entries. `no time source` if the project has none, and `null` if the time source has never been fetched.
+    oneOf:
+      - type: [number, 'null']
+        minimum: 0
+      - const: no time source
+  parent:
+    description: The parent ticket. To change it, provide only `key`.
+    oneOf:
+      - type: 'null'
+      - $ref: '#/$defs/ticket_reference'
+  children:
+    type: array
+    readOnly: true
+    description: Tickets with this one as their parent.
+    items: {$ref: '#/$defs/ticket_reference'}
+  sprints:
+    type: array
+    description: Names of the ticket's sprints. Replaced whole when edited.
+    items:
+      type: string
+  labels:
+    type: array
+    description: Replaced whole when edited.
+    items:
+      type: string
+  components:
+    type: array
+    description: Replaced whole when edited.
+    items:
+      type: string
+  created:
+    type: string
+    format: date-time
+    readOnly: true
+  updated:
+    type: string
+    format: date-time
+    readOnly: true
+  resolved:
+    type: [string, 'null']
+    format: date-time
+    readOnly: true
+  description:
+    type: [string, 'null']
+    description: Markdown.
+  links:
+    type: array
+    description: Replaced whole when edited. Links that aren't stored, such as those to a space not in the config, are left untouched.
+    items: {$ref: '#/$defs/link'}
+  comments:
+    type: array
+    readOnly: true
+    description: Comments, oldest first.
+    items:
+      type: object
+      additionalProperties: false
+      required: [author, date, body]
+      properties:
+        author:
+          type: string
+          description: Person slug, or `unknown`.
+        date:
+          type: string
+          format: date-time
+        body:
+          type: string
+          description: Markdown.
+  attachments:
+    type: array
+    readOnly: true
+    items:
+      type: object
+      additionalProperties: false
+      required: [filename, size, created, path]
+      properties:
+        filename:
+          type: string
+        size:
+          type: integer
+          minimum: 0
+          description: Size in bytes.
+        created:
+          type: string
+          format: date-time
+        path:
+          type: [string, 'null']
+          description: Local path, or `null` until the file is on disk.
+  changes:
+    readOnly: true
+    description: Only when requested. `no history` if the source has none.
+    oneOf:
+      - const: no history
+      - type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [field, person, from, to, date]
+          properties:
+            field:
+              type: string
+            person:
+              type: string
+              description: Person slug, or `unknown`.
+            from:
+              description: Value before the change.
+            to:
+              description: Value after the change.
+            date:
+              type: string
+              format: date-time
+
+$defs:
+  ticket_reference:
+    type: object
+    description: Another ticket, by key. Status and title are that ticket's.
+    additionalProperties: false
+    required: [key]
+    properties:
+      key:
+        type: string
+      status:
+        type: string
+        readOnly: true
+      title:
+        type: string
+        readOnly: true
+
+  link:
+    type: object
+    description: |
+      Reads as a sentence: "`from` `relation` `to`". Keeps the source's direction, because free text can't be inverted.
+      Both ends are required, except when creating, where a missing end means the new ticket.
+    additionalProperties: false
+    required: [relation]
+    anyOf:
+      - required: [from]
+      - required: [to]
+    properties:
+      from:
+        type: string
+        description: Key of the ticket at the start of the sentence.
+      relation:
+        type: string
+        description: Free text as the source words it. Writing needs the source's exact wording.
+      to:
+        type: string
+        description: Key of the ticket at the end of the sentence.
+      other_status:
+        type: string
+        readOnly: true
+        description: Status of the ticket at the other end from this one.
+      other_title:
+        type: string
+        readOnly: true
+        description: Title of the ticket at the other end from this one.
+
+examples:
+  - key: SAT-7
+    title: Retry failed meteo imports
+    project: sat
+    type: Task
+    status: In progress
+    assignee: ana
+    points: 3
+    estimated_hours: 6
+    spent_hours: 4.5
+    parent: {key: SAT-2, status: In progress, title: Meteo pipeline}
+    children:
+      - {key: SAT-8, status: To do, title: Add import metrics}
+    sprints: [Sprint 1]
+    labels: [backend]
+    components: [import]
+    created: '2026-10-12T09:30:00Z'
+    updated: '2026-10-28T16:05:00Z'
+    resolved: null
+    description: The import fails silently when the provider times out...
+    links:
+      - {from: SAT-7, relation: blocks, to: SAT-9, other_status: To do, other_title: Publish meteo layer}
+      - {from: SAT-4, relation: blocks, to: SAT-7, other_status: Resolved, other_title: Rotate API keys}
+    comments:
+      - {author: ana, date: '2026-10-20T11:00:00Z', body: Reproduced it with a 30 s timeout...}
+    attachments:
+      - {filename: trace.log, size: 48213, created: '2026-10-20T11:02:00Z', path: null}
+  - project: sat
+    type: Task
+    title: A new ticket
+    links:
+      - {relation: blocks, to: SAT-9}
+  - status: In progress

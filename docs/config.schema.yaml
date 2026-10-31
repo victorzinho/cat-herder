@@ -1,0 +1,229 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: cat-herder config
+description: |
+  The tool refuses to work without a valid config. It also rejects what this schema can't express:
+
+  - A reference to a source, repository or project that isn't defined.
+  - `tickets.source` pointing at a time source, or `time.source` pointing at a ticket source.
+  - A time project used twice, in the same project or in different ones.
+type: object
+additionalProperties: false
+required: [data_dir, sources, projects]
+properties:
+  data_dir:
+    type: string
+    description: Directory for the local database and downloaded attachments. A leading `~` expands to the home directory.
+  sources:
+    type: object
+    description: Ticket and time systems, by slug. The slug is what qualifies keys, as in `jira:SAT-7`.
+    minProperties: 1
+    propertyNames: {$ref: '#/$defs/slug'}
+    additionalProperties:
+      oneOf:
+        - $ref: '#/$defs/jira_source'
+        - $ref: '#/$defs/toggl_source'
+  people:
+    type: object
+    description: People, by slug. Someone with no entry here appears as unknown, and their hours still count.
+    propertyNames: {$ref: '#/$defs/slug'}
+    additionalProperties: {$ref: '#/$defs/person'}
+  repositories:
+    type: object
+    description: Local git repositories, by slug. Each value is the path to the main repository; its worktrees count as the same repository.
+    propertyNames: {$ref: '#/$defs/slug'}
+    additionalProperties:
+      type: string
+  projects:
+    type: object
+    description: Projects, by slug.
+    minProperties: 1
+    propertyNames: {$ref: '#/$defs/slug'}
+    additionalProperties: {$ref: '#/$defs/project'}
+
+$defs:
+  slug:
+    type: string
+    description: Lowercase letters, digits and hyphens.
+    pattern: '^[a-z0-9][a-z0-9-]*$'
+
+  env_var:
+    type: string
+    description: Name of an environment variable. The tool reads it, and fails if the credentials don't work.
+    pattern: '^[A-Za-z_][A-Za-z0-9_]*$'
+
+  access:
+    type: string
+    description: Permission checked before running an operation. `read-only` refuses anything that writes to this source.
+    enum: [read-only, full]
+
+  fetch_window_seconds:
+    type: integer
+    description: Data fetched this recently isn't fetched again. After a connection failure, the source is also skipped for this long.
+    minimum: 0
+
+  jira_source:
+    type: object
+    description: A Jira Cloud instance.
+    additionalProperties: false
+    required: [type, url, access, fetch_window_seconds, credentials_env]
+    properties:
+      type: {const: jira}
+      url:
+        type: string
+        format: uri
+        description: Base URL of the instance.
+      access: {$ref: '#/$defs/access'}
+      fetch_window_seconds: {$ref: '#/$defs/fetch_window_seconds'}
+      fields:
+        type: object
+        description: Jira field IDs for the fields that have no fixed ID. A field left out is treated as not existing in this source.
+        additionalProperties: false
+        properties:
+          points:
+            type: string
+            description: Field holding the ticket's points.
+          sprints:
+            type: string
+            description: Field holding the ticket's sprints.
+      credentials_env:
+        type: object
+        description: Environment variables holding the credentials.
+        additionalProperties: false
+        required: [email, token]
+        properties:
+          email: {$ref: '#/$defs/env_var'}
+          token: {$ref: '#/$defs/env_var'}
+
+  toggl_source:
+    type: object
+    description: A Toggl Track workspace.
+    additionalProperties: false
+    required: [type, workspace, access, fetch_window_seconds, history_from, credentials_env]
+    properties:
+      type: {const: toggl}
+      workspace:
+        type: integer
+        description: Workspace ID.
+      access: {$ref: '#/$defs/access'}
+      fetch_window_seconds: {$ref: '#/$defs/fetch_window_seconds'}
+      history_from:
+        type: string
+        format: date
+        description: Date the first fetch starts from. Earlier entries are never fetched.
+      credentials_env:
+        type: object
+        description: Environment variables holding the credentials.
+        additionalProperties: false
+        required: [token]
+        properties:
+          token: {$ref: '#/$defs/env_var'}
+
+  person:
+    type: object
+    additionalProperties: false
+    required: [identities]
+    properties:
+      identities:
+        type: object
+        description: This person's ID in each source, by source slug.
+        minProperties: 1
+        propertyNames: {$ref: '#/$defs/slug'}
+        additionalProperties:
+          type: [string, integer]
+      weekly_capacity:
+        type: object
+        description: Hours this person can work per week. Without it, they aren't counted among an open sprint's people.
+        additionalProperties: false
+        required: [hours]
+        properties:
+          hours:
+            type: number
+            description: Total hours per week.
+            minimum: 0
+          projects:
+            type: object
+            description: Limits per project, by project slug, as `[minimum, maximum]` hours per week.
+            propertyNames: {$ref: '#/$defs/slug'}
+            additionalProperties:
+              type: array
+              prefixItems:
+                - {type: number, minimum: 0}
+                - {type: number, minimum: 0}
+              minItems: 2
+              maxItems: 2
+
+  project:
+    type: object
+    description: Needs `tickets`, `time`, or both. A project with no `time` reports "no time source", not 0 h.
+    additionalProperties: false
+    anyOf:
+      - required: [tickets]
+      - required: [time]
+    properties:
+      tickets:
+        type: object
+        description: Where this project's tickets come from.
+        additionalProperties: false
+        required: [source, space]
+        properties:
+          source:
+            $ref: '#/$defs/slug'
+            description: Slug of a ticket source.
+          space:
+            type: string
+            description: The space in that source, such as a Jira project key.
+      time:
+        type: object
+        description: Where this project's time entries come from.
+        additionalProperties: false
+        required: [source, projects]
+        properties:
+          source:
+            $ref: '#/$defs/slug'
+            description: Slug of a time source.
+          projects:
+            type: array
+            description: Names of the projects in that source.
+            minItems: 1
+            uniqueItems: true
+            items:
+              type: string
+      repositories:
+        type: array
+        description: Slugs of this project's repositories. They break ties when a key's prefix is in several sources.
+        uniqueItems: true
+        items: {$ref: '#/$defs/slug'}
+
+examples:
+  - data_dir: ~/.local/share/cat-herder
+    sources:
+      jira:
+        type: jira
+        url: https://example.atlassian.net
+        access: full
+        fetch_window_seconds: 60
+        fields: {points: customfield_10043, sprints: customfield_10020}
+        credentials_env: {email: JIRA_EMAIL, token: JIRA_TOKEN}
+      toggl:
+        type: toggl
+        workspace: 123
+        access: read-only
+        fetch_window_seconds: 900
+        history_from: '2026-01-01'
+        credentials_env: {token: TOGGL_TOKEN}
+    people:
+      ana:
+        identities: {jira: <account id>, toggl: 456}
+        weekly_capacity:
+          hours: 30
+          projects: {sat: [6, 9]}
+    repositories:
+      sat: /code/sat
+      sat-meteo: /code/sat-meteo
+    projects:
+      sat:
+        tickets: {source: jira, space: SAT}
+        time: {source: toggl, projects: [SAT-2025, SAT-2026]}
+        repositories: [sat, sat-meteo]
+      comercial:
+        time: {source: toggl, projects: [Comercial]}
