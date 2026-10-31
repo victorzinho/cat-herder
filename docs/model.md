@@ -36,30 +36,36 @@
 
 ## Tickets
 
-Tickets have a closed set of fields. The YAML format is in [ticket.schema.yaml](ticket.schema.yaml).
+Tickets have a closed set of fields, and only the config can add to it, as custom fields. The YAML format is in [ticket.schema.yaml](ticket.schema.yaml).
 
 | Group | Fields |
 |---|---|
 | **Identity** | Source, key, stable source ID, project |
 | **Content** | Title, description (markdown), type, labels, components |
 | **Workflow** | Status, assignee, points, estimated hours, parent, sprints |
-| **Dates** | Created, updated, resolved, fetched at |
+| **Dates** | Created, updated, fetched at |
 | **Attached** | Comments (author, date, markdown body), attachments |
+| **Custom** | Single-value fields named in the source's `custom_fields` |
 
 - Status is the source's name for it, with no category and no translation: if a Jira calls it `BLK`, it's `BLK` everywhere.
+- A ticket is done if its status is in its source's `done_statuses`. Its done date is the last `Change` into one of those statuses, or its creation date if there's none.
+- A ticket is discarded if its status is in its source's optional `discarded_statuses`.
+- A ticket is open if it's neither done nor discarded.
+- Custom fields are only carried: nothing is calculated from them.
 
 ## Links
 
 - A link is `ticket_from`, `ticket_to` and `relation_description`, and reads as a sentence: "A blocks B".
 - Both ends must be tickets in the same source.
 - The relation is free text, kept as the source words it.
+- A source's optional `blocking_relation` names the one where the first ticket blocks the second.
 
 ## Changes
 
 - A change is `ticket`, `field`, `person` making the change, `from`/`to` values, and `date` of change.
 - Changes are append-only and cover only the fields we persist, plus links.
 - Current state comes from the ticket, and is never rebuilt from Changes.
-- A source with no history returns none, and reports say "no history".
+- Every ticket source must provide history.
 
 ## Attachments
 
@@ -69,20 +75,24 @@ Tickets have a closed set of fields. The YAML format is in [ticket.schema.yaml](
 ## People and capacity
 
 - People are global, and each has an identity per source. Someone with no mapping appears as unknown, and their hours still count.
-- Capacity is per person, in hours per week, with optional per-project limits.
-- A person's load is everything they hold across all overlapping sprints, compared against their weekly hours over those dates.
+- Capacity is per person, in hours per week, with an optional capacity per project.
+- A missing capacity counts as 0, in total or for a project.
+- Unallocated capacity is the total minus the sum of the per-project capacities: hours the person could still take on.
+- Project capacities can add up to more than the total. This is allowed, and reports flag it.
 
 ## Sprints
 
-- A sprint's people are either who worked in their tickets (closed) or whoever has capacity defined in `people` in the config (open).
-- A sprint has a name, a start, a planned end and an actual end.
-- An open sprint has no actual end yet, so its window runs from its start.
+- A sprint has a name, a state (not started, in progress or ended) from the source, a start, a planned end and an actual end.
+- A sprint's people are whoever has capacity in one of its projects, plus whoever has hours in it (ended) or holds one of its tickets (not started or in progress).
+- A sprint that hasn't ended has no actual end yet, so its window runs from its start.
 
 ## Time entries
 
 - An entry that names a sprint counts in that sprint.
-- Otherwise, hours on a ticket count in each sprint holding that ticket, if the entry's date is between the sprint's start and actual end.
+- Otherwise, hours on a ticket count in each sprint that holds or held that ticket, if the entry's date is between the sprint's start and actual end.
 - Otherwise, ticketless hours count if the entry's date is between the sprint's start and actual end, and the sprint holds tickets from the entry's project.
 - An entry outside every sprint's dates counts in no sprint unless it names one.
 - An entry inside two overlapping sprints counts in both, which is accepted for now.
 - Entries in time-only projects count in no sprint unless they name one.
+- Non-ticket work is hours from entries with no ticket.
+- Planning a sprint sets aside a share of each project's capacity for non-ticket work: that share of the project's hours in its ended sprints, or `default_non_ticket_percent` if it has no ended sprints or no time source.

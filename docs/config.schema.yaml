@@ -13,6 +13,11 @@ properties:
   data_dir:
     type: string
     description: Directory for the local database and downloaded attachments. A leading `~` expands to the home directory.
+  default_non_ticket_percent:
+    type: number
+    description: Share of capacity set aside for non-ticket work when planning a sprint, for projects with no ended sprints or no time source. Without it, those projects set nothing aside.
+    minimum: 0
+    maximum: 100
   sources:
     type: object
     description: Ticket and time systems, by slug. The slug is what qualifies keys, as in `jira:SAT-7`.
@@ -65,7 +70,7 @@ $defs:
     type: object
     description: A Jira Cloud instance.
     additionalProperties: false
-    required: [type, url, access, fetch_window_seconds, credentials_env]
+    required: [type, url, access, fetch_window_seconds, done_statuses, credentials_env]
     properties:
       type: {const: jira}
       url:
@@ -74,6 +79,22 @@ $defs:
         description: Base URL of the instance.
       access: {$ref: '#/$defs/access'}
       fetch_window_seconds: {$ref: '#/$defs/fetch_window_seconds'}
+      done_statuses:
+        type: array
+        description: The source's names for the statuses that count as done.
+        minItems: 1
+        uniqueItems: true
+        items:
+          type: string
+      discarded_statuses:
+        type: array
+        description: The source's names for the statuses of tickets dropped without being done. Without it, those tickets count as open.
+        uniqueItems: true
+        items:
+          type: string
+      blocking_relation:
+        type: string
+        description: The source's wording for the relation where the first ticket blocks the second, as in "A blocks B". Without it, sprint reports don't show blocked tickets.
       fields:
         type: object
         description: Jira field IDs for the fields that have no fixed ID. A field left out is treated as not existing in this source.
@@ -85,6 +106,14 @@ $defs:
           sprints:
             type: string
             description: Field holding the ticket's sprints.
+      custom_fields:
+        type: object
+        description: |
+          Extra ticket fields to carry, by a name of your choice, with the Jira field ID as the value. The tool never
+          calculates anything from them. Text, number and single-select fields are supported, and any other type explodes.
+        propertyNames: {$ref: '#/$defs/slug'}
+        additionalProperties:
+          type: string
       credentials_env:
         type: object
         description: Environment variables holding the credentials.
@@ -132,7 +161,7 @@ $defs:
           type: [string, integer]
       weekly_capacity:
         type: object
-        description: Hours this person can work per week. Without it, they aren't counted among an open sprint's people.
+        description: Hours this person can work per week. Without it, their capacity counts as 0.
         additionalProperties: false
         required: [hours]
         properties:
@@ -142,15 +171,11 @@ $defs:
             minimum: 0
           projects:
             type: object
-            description: Limits per project, by project slug, as `[minimum, maximum]` hours per week.
+            description: Hours per week for each project, by project slug. A project left out counts as 0.
             propertyNames: {$ref: '#/$defs/slug'}
             additionalProperties:
-              type: array
-              prefixItems:
-                - {type: number, minimum: 0}
-                - {type: number, minimum: 0}
-              minItems: 2
-              maxItems: 2
+              type: number
+              minimum: 0
 
   project:
     type: object
@@ -196,13 +221,18 @@ $defs:
 
 examples:
   - data_dir: ~/.local/share/cat-herder
+    default_non_ticket_percent: 20
     sources:
       jira:
         type: jira
         url: https://example.atlassian.net
         access: full
         fetch_window_seconds: 60
-        fields: {points: customfield_10043, sprints: customfield_10020}
+        done_statuses: [Done]
+        discarded_statuses: [Cancelled]
+        blocking_relation: blocks
+        fields: {points: customfield_10035, sprints: customfield_10020}
+        custom_fields: {size: customfield_10043}
         credentials_env: {email: JIRA_EMAIL, token: JIRA_TOKEN}
       toggl:
         type: toggl
@@ -216,7 +246,7 @@ examples:
         identities: {jira: <account id>, toggl: 456}
         weekly_capacity:
           hours: 30
-          projects: {sat: [6, 9]}
+          projects: {sat: 8}
     repositories:
       sat: /code/sat
       sat-meteo: /code/sat-meteo

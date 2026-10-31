@@ -6,7 +6,9 @@ With it, you can:
 
 - Read a ticket along with its links, comments and the hours spent on it
 - Create and edit tickets
-- See how the current sprint is going, from where each ticket stands to the hours each person has spent against their capacity
+- Review how a finished sprint went, from where each ticket ended up to the hours each person spent against their capacity
+- Check whether a planned sprint fits each person's capacity, and what's unassigned, unestimated or blocked
+- Follow a sprint in progress, from the hours done so far to whether the work left still fits
 
 ## Quick setup
 
@@ -21,7 +23,9 @@ sources:
     url: https://example.atlassian.net
     access: full
     fetch_window_seconds: 60
-    fields: {points: customfield_10043, sprints: customfield_10020}
+    done_statuses: [Done]
+    blocking_relation: blocks
+    fields: {points: customfield_10035, sprints: customfield_10020}
     credentials_env: {email: JIRA_EMAIL, token: JIRA_TOKEN}
   toggl:
     type: toggl
@@ -43,6 +47,8 @@ projects:
 
 - `data_dir`: where the tool keeps its local copy of what it reads, and any attachments you download.
 - `fetch_window_seconds`: how long the tool trusts that copy before asking the source again. Toggl's is longer because its API quota is small.
+- `done_statuses`: which of your Jira's statuses count as done.
+- `blocking_relation`: your Jira's wording for "A blocks B". Sprint reports use it to show blocked tickets.
 - `fields`: where your Jira keeps points and sprints. These IDs are different in every Jira.
 - `history_from`: how far back to read Toggl entries.
 - `credentials_env`: the names of the environment variables holding your credentials. Set them before running the tool.

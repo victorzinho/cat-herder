@@ -43,6 +43,13 @@ properties:
     type: [number, 'null']
     minimum: 0
     description: Independent from `points`, and either can be empty.
+  custom:
+    type: object
+    description: |
+      The fields in the source's `custom_fields`, by name. A name that isn't configured explodes.
+      When editing, a missing name stays as it is, and `null` clears it.
+    additionalProperties:
+      type: [string, number, 'null']
   spent_hours:
     readOnly: true
     description: Sum of the ticket's stored time entries. `no time source` if the project has none, and `null` if the time source has never been fetched.
@@ -81,10 +88,6 @@ properties:
     readOnly: true
   updated:
     type: string
-    format: date-time
-    readOnly: true
-  resolved:
-    type: [string, 'null']
     format: date-time
     readOnly: true
   description:
@@ -134,27 +137,25 @@ properties:
           description: Local path, or `null` until the file is on disk.
   changes:
     readOnly: true
-    description: Only when requested. `no history` if the source has none.
-    oneOf:
-      - const: no history
-      - type: array
-        items:
-          type: object
-          additionalProperties: false
-          required: [field, person, from, to, date]
-          properties:
-            field:
-              type: string
-            person:
-              type: string
-              description: Person slug, or `unknown`.
-            from:
-              description: Value before the change.
-            to:
-              description: Value after the change.
-            date:
-              type: string
-              format: date-time
+    description: Only when requested.
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [field, person, from, to, date]
+      properties:
+        field:
+          type: string
+        person:
+          type: string
+          description: Person slug, or `unknown`.
+        from:
+          description: Value before the change.
+        to:
+          description: Value after the change.
+        date:
+          type: string
+          format: date-time
 
 $defs:
   ticket_reference:
@@ -208,8 +209,9 @@ examples:
     type: Task
     status: In progress
     assignee: ana
-    points: 3
-    estimated_hours: 6
+    points: 5
+    estimated_hours: 5
+    custom: {size: 🔥}
     spent_hours: 4.5
     parent: {key: SAT-2, status: In progress, title: Meteo pipeline}
     children:
@@ -219,7 +221,6 @@ examples:
     components: [import]
     created: '2026-10-12T09:30:00Z'
     updated: '2026-10-28T16:05:00Z'
-    resolved: null
     description: The import fails silently when the provider times out...
     links:
       - {from: SAT-7, relation: blocks, to: SAT-9, other_status: To do, other_title: Publish meteo layer}
