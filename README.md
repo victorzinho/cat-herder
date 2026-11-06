@@ -57,6 +57,14 @@ The tool won't run without a config. To keep it somewhere else, point `CAT_HERDE
 
 Then run `cat-herder --help` to see everything it can do.
 
+## Development
+
+`just --list` shows the tasks. `just check` runs what CI runs.
+
+- Every meaningful commit adds to `## Unreleased` in `CHANGELOG.md`.
+- Every breaking change also adds what to do to `MIGRATIONS.md`.
+- Every breaking change from 1.0.0 bumps the major version manually (unless it's already bumped): `uv version 2.0.0.dev0`.
+
 ## Learn more
 
 - [Model](docs/model.md): how the concepts fit together

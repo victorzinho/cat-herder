@@ -1,0 +1,72 @@
+name: Release
+run-name: Release ${{ inputs.release_type }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        type: choice
+        options: [rc, stable]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TYPE: ${{ inputs.release_type }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - uses: extractions/setup-just@v3
+
+      - name: Check
+        run: just check
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Set the release version
+        run: |
+          if [[ "$RELEASE_TYPE" == stable ]]; then
+            uv version --bump stable
+            sed -i "s/^## Unreleased$/## Unreleased\n\n## $(uv version --short)/" CHANGELOG.md
+          elif [[ "$(uv version --short)" == *.dev* ]]; then
+            # we only bump rc from .dev; from rcN to rcN+1 "Start the next version" step below already prepared it
+            uv version --bump rc
+          fi
+          echo "VERSION=$(uv version --short)" >> "$GITHUB_ENV"
+
+      # the CHANGELOG section: the version's for stable, Unreleased for rc
+      - name: Write the release notes
+        run: |
+          heading=$([[ "$RELEASE_TYPE" == stable ]] && echo "$VERSION" || echo Unreleased)
+          awk -v heading="## $heading" '$0 == heading {found = 1; next} /^## / {found = 0} found' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+
+      - name: Commit and tag the release
+        run: |
+          # only commit if the bump changed something
+          git diff --quiet || git commit -am "Release $VERSION"
+          git tag -m "Release $VERSION" "v$VERSION"
+
+      - name: Build
+        run: uv build
+
+      - name: Start the next version
+        run: |
+          if [[ "$RELEASE_TYPE" == stable ]]; then
+            uv version --bump minor --bump dev=0
+          else
+            uv version --bump rc
+          fi
+          git commit -am "Prepare $(uv version --short)"
+
+      - name: Push
+        run: git push origin HEAD "v$VERSION"
+
+      - name: Create the GitHub release
+        run: gh release create "v$VERSION" dist/* --notes-file "$RUNNER_TEMP/notes.md" $([[ "$RELEASE_TYPE" == rc ]] && echo --prerelease)

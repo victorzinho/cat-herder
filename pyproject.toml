@@ -1,0 +1,49 @@
+[project]
+name = "cat-herder"
+version = "0.1.0.dev0"
+description = "Tickets and hours from separate tools, such as Jira and Toggl, in one place"
+readme = "README.md"
+authors = [{ name = "Víctor González" }]
+requires-python = ">=3.12"
+dependencies = [
+]
+
+[project.scripts]
+cat-herder = "cat_herder.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.11.7,<0.12"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.40.1",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.9",
+    "types-jsonschema>=4.25",
+    "types-pyyaml>=6.0.12.20260906",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP"]
+
+[tool.basedpyright]
+include = ["src", "tests"]
+typeCheckingMode = "strict"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--import-mode=importlib --strict-markers"
+
+[tool.coverage.run]
+source = ["cat_herder"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true
