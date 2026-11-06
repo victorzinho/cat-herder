@@ -6,6 +6,8 @@ readme = "README.md"
 authors = [{ name = "Víctor González" }]
 requires-python = ">=3.12"
 dependencies = [
+    "jsonschema>=4.26.0",
+    "pyyaml>=6.0.3",
 ]
 
 [project.scripts]
@@ -18,6 +20,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "basedpyright>=1.40.1",
+    "import-linter>=2.16",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "ruff>=0.16.9",
@@ -47,3 +50,13 @@ branch = true
 fail_under = 80
 show_missing = true
 skip_covered = true
+
+[tool.importlinter]
+root_package = "cat_herder"
+
+[[tool.importlinter.contracts]]
+name = "Layers: cli -> services -> store | sources -> domain"
+type = "layers"
+containers = ["cat_herder"]
+layers = ["cli", "(services)", "(store) | (sources)", "domain"]
+exhaustive = true

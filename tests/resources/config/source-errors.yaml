@@ -1,0 +1,22 @@
+# A misspelled Jira option, and a Toggl date that doesn't exist.
+data_dir: /data
+sources:
+  jira:
+    type: jira
+    url: https://example.atlassian.net
+    access: full
+    fetch_window_seconds: 60
+    done_statuses: [Done]
+    fieldz: {points: customfield_10035}
+    credentials_env: {email: JIRA_EMAIL, token: JIRA_TOKEN}
+  toggl:
+    type: toggl
+    workspace: 123
+    access: read-only
+    fetch_window_seconds: 900
+    history_from: 2026-13-01
+    credentials_env: {token: TOGGL_TOKEN}
+projects:
+  sat:
+    tickets: {source: jira, space: SAT}
+    time: {source: toggl, spaces: [SAT]}

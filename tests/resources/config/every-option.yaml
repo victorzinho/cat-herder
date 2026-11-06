@@ -1,0 +1,37 @@
+# Every option, with an unquoted date in history_from.
+data_dir: ~/cat-herder-data
+default_non_ticket_percent: 20
+sources:
+  jira:
+    type: jira
+    url: https://example.atlassian.net
+    access: full
+    fetch_window_seconds: 60
+    done_statuses: [Done]
+    discarded_statuses: [Cancelled]
+    blocking_relation: blocks
+    fields: {points: customfield_10035, sprints: customfield_10020}
+    custom_fields: {size: customfield_10043}
+    credentials_env: {email: JIRA_EMAIL, token: JIRA_TOKEN}
+  toggl:
+    type: toggl
+    workspace: 123
+    access: read-only
+    fetch_window_seconds: 900
+    history_from: 2026-01-01
+    credentials_env: {token: TOGGL_TOKEN}
+people:
+  ana:
+    identities: {jira: abc123, toggl: 456}
+    weekly_capacity:
+      hours: 30
+      projects: {sat: 8}
+repositories:
+  sat: /code/sat
+projects:
+  sat:
+    tickets: {source: jira, space: SAT}
+    time: {source: toggl, spaces: [SAT-2025, SAT-2026]}
+    repositories: [sat]
+  comercial:
+    time: {source: toggl, spaces: [Comercial]}

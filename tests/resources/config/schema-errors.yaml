@@ -1,0 +1,12 @@
+# No data_dir, and a project's tickets without a space.
+sources:
+  jira:
+    type: jira
+    url: https://example.atlassian.net
+    access: full
+    fetch_window_seconds: 60
+    done_statuses: [Done]
+    credentials_env: {email: JIRA_EMAIL, token: JIRA_TOKEN}
+projects:
+  sat:
+    tickets: {source: jira}

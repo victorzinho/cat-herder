@@ -41,7 +41,7 @@ repositories:
 projects:
   web:
     tickets: {source: jira, space: WEB}
-    time: {source: toggl, projects: [Website]}
+    time: {source: toggl, spaces: [Website]}
     repositories: [web]
 ```
 
@@ -68,5 +68,5 @@ Then run `cat-herder --help` to see everything it can do.
 ## Learn more
 
 - [Model](docs/model.md): how the concepts fit together
-- [Config schema](docs/config.schema.yaml): every config option
-- [Ticket schema](docs/ticket.schema.yaml): the format for reading, creating and editing tickets
+- [Config schema](src/cat_herder/cli/schemas/config.schema.yaml): every config option
+- [Ticket schema](src/cat_herder/cli/schemas/ticket.schema.yaml): the format for reading, creating and editing tickets

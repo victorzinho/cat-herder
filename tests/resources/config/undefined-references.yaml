@@ -1,0 +1,33 @@
+# Every reference the schema can't check, each one broken once.
+data_dir: /data
+sources:
+  jira:
+    type: jira
+    url: https://example.atlassian.net
+    access: full
+    fetch_window_seconds: 60
+    done_statuses: [Done]
+    credentials_env: {email: JIRA_EMAIL, token: JIRA_TOKEN}
+  toggl:
+    type: toggl
+    workspace: 123
+    access: read-only
+    fetch_window_seconds: 900
+    history_from: '2026-01-01'
+    credentials_env: {token: TOGGL_TOKEN}
+people:
+  ana:
+    identities: {gitlab: ana}
+    weekly_capacity: {hours: 30, projects: {nope: 8}}
+repositories:
+  sat: /code/sat
+projects:
+  sat:
+    tickets: {source: toggl, space: SAT}
+    time: {source: jira, spaces: [Shared]}
+    repositories: [sat-meteo]
+  web:
+    tickets: {source: jirra, space: WEB}
+    time: {source: toggl, spaces: [Shared]}
+  comercial:
+    time: {source: toggl, spaces: [Shared]}

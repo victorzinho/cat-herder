@@ -3,7 +3,8 @@
 | Concept | What it is |
 |---|---|
 | **Source** | A connection to a ticket (Jira) or time (Toggl) system. Named with our own slug. |
-| **Project** | At most one space in a ticket source and any number of time projects in a time source, plus its repositories. Named with our own slug. |
+| **Space** | Where a source groups its items, by the source's own name: a Jira space, a Toggl project. |
+| **Project** | At most one space in a ticket source and any number of spaces in a time source, plus its repositories. Named with our own slug. |
 | **Repository** | A path to a git repository locally. Worktrees count as their main repo. |
 | **Person** | A slug and an identity per source. |
 | **Ticket** | Identified by `<source_slug>:<key>` (`jira:VIC-1`) |
@@ -15,7 +16,7 @@
 
 - A `Source` can have multiple `Project`.
 - A `Project` can receive tickets from at most one space in a single ticket `Source`.
-- A `Project` can receive entries from any number of time projects in a single time `Source`.
+- A `Project` can receive entries from any number of spaces in a single time `Source`.
 - A `Project` must be related to at least one of ticket or time `Source`. There might be projects without tickets, and projects without time entries.
 
 - A `Project` can have multiple `Repository`.
@@ -36,7 +37,7 @@
 
 ## Tickets
 
-Tickets have a closed set of fields, and only the config can add to it, as custom fields. The YAML format is in [ticket.schema.yaml](ticket.schema.yaml).
+Tickets have a closed set of fields, and only the config can add to it, as custom fields. The YAML format is in [ticket.schema.yaml](../src/cat_herder/cli/schemas/ticket.schema.yaml).
 
 | Group | Fields |
 |---|---|

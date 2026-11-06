@@ -5,7 +5,7 @@ description: |
 
   - A reference to a source, repository or project that isn't defined.
   - `tickets.source` pointing at a time source, or `time.source` pointing at a ticket source.
-  - A time project used twice, in the same project or in different ones.
+  - A time source's space used twice, in the same project or in different ones.
 type: object
 additionalProperties: false
 required: [data_dir, sources, projects]
@@ -24,9 +24,15 @@ properties:
     minProperties: 1
     propertyNames: {$ref: '#/$defs/slug'}
     additionalProperties:
-      oneOf:
-        - $ref: '#/$defs/jira_source'
-        - $ref: '#/$defs/toggl_source'
+      type: object
+      required: [type]
+      properties:
+        type: {enum: [jira, toggl]}
+      allOf:
+        - if: {properties: {type: {const: jira}}}
+          then: {$ref: '#/$defs/jira_source'}
+        - if: {properties: {type: {const: toggl}}}
+          then: {$ref: '#/$defs/toggl_source'}
   people:
     type: object
     description: People, by slug. Someone with no entry here appears as unknown, and their hours still count.
@@ -196,19 +202,19 @@ $defs:
             description: Slug of a ticket source.
           space:
             type: string
-            description: The space in that source, such as a Jira project key.
+            description: The space's key in that source, such as a Jira space key.
       time:
         type: object
         description: Where this project's time entries come from.
         additionalProperties: false
-        required: [source, projects]
+        required: [source, spaces]
         properties:
           source:
             $ref: '#/$defs/slug'
             description: Slug of a time source.
-          projects:
+          spaces:
             type: array
-            description: Names of the projects in that source.
+            description: Names of the spaces in that source, such as Toggl projects.
             minItems: 1
             uniqueItems: true
             items:
@@ -253,7 +259,7 @@ examples:
     projects:
       sat:
         tickets: {source: jira, space: SAT}
-        time: {source: toggl, projects: [SAT-2025, SAT-2026]}
+        time: {source: toggl, spaces: [SAT-2025, SAT-2026]}
         repositories: [sat, sat-meteo]
       comercial:
-        time: {source: toggl, projects: [Comercial]}
+        time: {source: toggl, spaces: [Comercial]}
