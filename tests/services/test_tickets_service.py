@@ -3,14 +3,15 @@ from collections.abc import Generator
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
 from sqlalchemy.orm import Session
 
-from cat_herder.domain.config import Config, Project, TicketOrigin
+from cat_herder.domain.config import Config, Person, Project, TicketOrigin
 from cat_herder.domain.ticket import Ticket
-from cat_herder.services.tickets_service import KeyNotResolved, TicketsService
+from cat_herder.services.tickets_service import CURRENT_SPRINT, KeyNotResolved, TicketsService
 from cat_herder.sources.errors import SourceUnreachable
 from cat_herder.sources.jira.client import JiraClient
 from cat_herder.sources.jira.source import JiraSource
@@ -24,7 +25,15 @@ WINDOW = timedelta(seconds=JIRA_CONFIG.fetch_window_seconds)
 STORED_SAT_7 = new_ticket(key='SAT-7', title='As stored')
 SAT = Project(slug='sat', tickets=TicketOrigin(source='jira', space='SAT'), time=None, repositories=('sat',))
 TOGGL_CONFIG = new_toggl_source_config()
-CONFIG = Config(data_dir=Path(), sources=(JIRA_CONFIG, TOGGL_CONFIG), projects=(SAT,))
+CONFIG = Config(
+    data_dir=Path(),
+    sources=(JIRA_CONFIG, TOGGL_CONFIG),
+    projects=(SAT,),
+    people=(
+        Person(slug='ana', identity_by_source={'jira': 'account-ana'}),
+        Person(slug='bob', identity_by_source={'toggl': 7}),
+    ),
+)
 # SAT is a space in both jira and other.
 TWO_JIRAS = replace(
     CONFIG,
@@ -256,6 +265,45 @@ def test_sync_warns_when_a_source_is_unreachable(session: Session, jira_api: Jir
 
     # THEN
     assert caplog.messages == ['jira unreachable, SAT was never synced']
+
+
+@pytest.mark.parametrize(('filters', 'keys'), [
+    pytest.param({'project_slugs': ['sat']}, ['SAT-7', 'SAT-8', 'SAT-10'], id='project'),
+    pytest.param({'statuses': ['To do', 'Done']}, ['SAT-8', 'SAT-10'], id='any-of-several-statuses'),
+    pytest.param({'sprint_name': 'All Sprint 1'}, ['SAT-7'], id='sprint-by-name'),
+    pytest.param({'sprint_name': CURRENT_SPRINT}, ['SAT-7'], id='current-sprint'),
+    pytest.param({'assignee_slug': 'ana'}, ['SAT-7'], id='assignee'),
+    pytest.param({'assignee_slug': 'bob'}, [], id='assignee-with-no-identity-in-the-source'),
+    pytest.param({'updated_since': datetime(2026, 10, 29, tzinfo=UTC)}, ['SAT-8', 'SAT-10'], id='updated-since'),
+    pytest.param({'statuses': ['Done'], 'assignee_slug': 'ana'}, [], id='every-filter-must-match'),
+])
+def test_list_tickets_syncs_and_lists_the_full_tickets_matching_every_filter(
+    session: Session, jira_api: JiraApi, filters: dict[str, Any], keys: list[str]
+) -> None:
+    # GIVEN the SAT space, where SAT-7 is Ana's, and SAT-2 only known as its parent
+    cut = _service(session, jira_api)
+
+    # WHEN
+    tickets = cut.list_tickets(**filters)
+
+    # THEN
+    assert [ticket.key for ticket in tickets] == keys
+
+
+def test_list_tickets_answers_from_the_local_copy_when_unreachable(
+    session: Session, jira_api: JiraApi, caplog: pytest.LogCaptureFixture
+) -> None:
+    # GIVEN SAT listed once, and Jira unreachable since
+    cut = _service(session, jira_api)
+    cut.list_tickets(project_slugs=['sat'])
+    jira_api.reachable = False
+
+    # WHEN
+    tickets = cut.list_tickets(project_slugs=['sat'], force_fetch=True)
+
+    # THEN
+    assert [ticket.key for ticket in tickets] == ['SAT-7', 'SAT-8', 'SAT-10']
+    assert caplog.messages == [f'jira unreachable, SAT is a local copy from {datetime.now(UTC):%Y-%m-%d}']
 
 
 def _service(session: Session, jira_api: JiraApi) -> TicketsService:

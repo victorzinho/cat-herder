@@ -1,0 +1,33 @@
+- key: SAT-7
+  title: Retry failed meteo imports
+  project: sat
+  type: Task
+  status: In progress
+  assignee: ana
+  points: 5
+  estimated_hours: 5
+  custom_fields: {size: 🔥, team: meteo-team}
+  sprints: [All Sprint 1, All Sprint 2]
+  updated: '2026-10-28T16:05:00Z'
+- key: SAT-8
+  title: Add import metrics
+  project: sat
+  type: Task
+  status: To do
+  assignee: null
+  points: null
+  estimated_hours: null
+  custom_fields: {size: null, team: null}
+  sprints: []
+  updated: '2026-10-29T08:00:00Z'
+- key: SAT-10
+  title: Alert on failed imports
+  project: sat
+  type: Sub-task
+  status: Done
+  assignee: null
+  points: null
+  estimated_hours: null
+  custom_fields: {size: null, team: null}
+  sprints: []
+  updated: '2026-10-30T08:00:00Z'

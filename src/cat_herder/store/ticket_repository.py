@@ -1,13 +1,13 @@
-import re
-from collections.abc import Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Column, ForeignKey, Integer, Table, UniqueConstraint, delete, or_, select
+from sqlalchemy import Column, ForeignKey, Integer, Table, UniqueConstraint, and_, delete, false, or_, select
 from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
 
-from cat_herder.domain.ticket import Attachment, Change, Comment, Link, Ticket, TicketSummary
+from cat_herder.domain.config import TicketOrigin
+from cat_herder.domain.ticket import Attachment, Change, Comment, Link, SprintState, Ticket, TicketSummary, key_order
 from cat_herder.store.base import Base
 from cat_herder.store.sprint_repository import SprintRepository, SprintRow, sprint_to_domain
 
@@ -141,10 +141,37 @@ class TicketRepository:
         row = self._row(source, key)
         if not row or not row.fetched_at:
             return None
-        links = self._session.scalars(
-            select(LinkRow).where(or_(LinkRow.from_id == row.id, LinkRow.to_id == row.id)).order_by(LinkRow.id)
-        ).all()
-        return StoredTicket(ticket=_ticket_from_rows(row, links), fetched_at=row.fetched_at)
+        return StoredTicket(ticket=self._ticket(row), fetched_at=row.fetched_at)
+
+    def find(
+        self,
+        origins: Collection[TicketOrigin],
+        statuses: Collection[str] = (),
+        sprint_name: str | None = None,
+        sprint_state: SprintState | None = None,
+        assignee_by_source: Mapping[str, str] | None = None,
+        updated_since: datetime | None = None,
+    ) -> list[Ticket]:
+        """The full tickets in those spaces that match every criterion given."""
+        query = select(TicketRow).where(
+            TicketRow.fetched_at.is_not(None),
+            or_(false(), *(and_(TicketRow.source == each.source, TicketRow.space == each.space) for each in origins)),
+        )
+        if statuses:
+            query = query.where(TicketRow.status.in_(statuses))
+        if sprint_name:
+            query = query.where(TicketRow.sprints.any(SprintRow.name == sprint_name))
+        if sprint_state:
+            query = query.where(TicketRow.sprints.any(SprintRow.state == sprint_state.value))
+        if assignee_by_source is not None:
+            assigned = (
+                and_(TicketRow.source == source, TicketRow.assignee == identity)
+                for source, identity in assignee_by_source.items()
+            )
+            query = query.where(or_(false(), *assigned))
+        if updated_since:
+            query = query.where(TicketRow.updated >= updated_since)
+        return [self._ticket(row) for row in self._session.scalars(query)]
 
     def delete(self, source: str, key: str) -> None:
         """Delete the ticket with its links, and leave its stored children without parent. A missing one is ignored."""
@@ -156,6 +183,12 @@ class TicketRepository:
         """Keys of the full tickets stored for that space. Partial ones don't know their space."""
         keys = select(TicketRow.key).where(TicketRow.source == source, TicketRow.space == space)
         return set(self._session.scalars(keys))
+
+    def _ticket(self, row: TicketRow) -> Ticket:
+        links = self._session.scalars(
+            select(LinkRow).where(or_(LinkRow.from_id == row.id, LinkRow.to_id == row.id)).order_by(LinkRow.id)
+        ).all()
+        return _ticket_from_rows(row, links)
 
     def _row(self, source: str, key: str) -> TicketRow | None:
         return self._session.scalars(select(TicketRow).where(TicketRow.source == source, TicketRow.key == key)).first()
@@ -196,7 +229,7 @@ def _ticket_from_rows(row: TicketRow, links: Sequence[LinkRow]) -> Ticket:
         comments=tuple(_comment_to_domain(comment) for comment in row.comments),
         attachments=tuple(_attachment_to_domain(attachment) for attachment in row.attachments),
         parent=_summary_to_domain(row.parent) if row.parent else None,
-        children=tuple(_summary_to_domain(child) for child in sorted(row.children, key=_key_order)),
+        children=tuple(_summary_to_domain(child) for child in sorted(row.children, key=lambda row: key_order(row.key))),
         links=tuple(_link_to_domain(link) for link in links),
         linked=tuple(
             _summary_to_domain(link.to_ticket if link.from_id == row.id else link.from_ticket) for link in links
@@ -255,7 +288,3 @@ def _change_from_domain(change: Change) -> ChangeRow:
 
 def _link_to_domain(row: LinkRow) -> Link:
     return Link(from_key=row.from_ticket.key, relation=row.relation, to_key=row.to_ticket.key)
-
-
-def _key_order(row: TicketRow) -> tuple[str | int, ...]:
-    return tuple(int(part) if part.isdigit() else part for part in re.split(r'(\d+)', row.key))

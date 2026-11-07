@@ -5,6 +5,7 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
+from cat_herder.cli.commands import list as list_command
 from cat_herder.cli.commands import show, sync
 from cat_herder.cli.config import ConfigError, load_config
 from cat_herder.services.tickets_service import KeyNotResolved
@@ -22,6 +23,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument('--version', action='version', version=f'%(prog)s {version("cat-herder")}')
     commands = parser.add_subparsers(title='commands', dest='command')
+    list_command.configure(commands.add_parser(
+        'list',
+        help='list tickets matching filters',
+        description='List the tickets matching every filter, sorted by key, after syncing their projects.',
+    ))
     show.configure(commands.add_parser('show', help='show one ticket', description='Show one ticket as YAML.'))
     sync.configure(commands.add_parser(
         'sync',

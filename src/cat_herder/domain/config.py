@@ -132,6 +132,9 @@ class Config:
     def project(self, slug: str) -> Project:
         return _by_slug(self.projects, slug)
 
+    def person(self, slug: str) -> Person:
+        return _by_slug(self.people, slug)
+
     def project_for(self, source: str, space: str) -> Project | None:
         """The project with its tickets in that space of that source, if any."""
         return next(

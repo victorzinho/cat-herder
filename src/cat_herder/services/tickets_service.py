@@ -1,17 +1,20 @@
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from cat_herder.domain.config import Config
-from cat_herder.domain.ticket import Ticket
+from cat_herder.domain.config import Config, TicketOrigin
+from cat_herder.domain.ticket import SprintState, Ticket, key_order
 from cat_herder.sources.errors import SourceUnreachable, TicketNotFound
 from cat_herder.sources.ticket_source import TicketSource
 from cat_herder.store.space_sync_repository import SpaceSyncRepository
 from cat_herder.store.ticket_repository import StoredTicket, TicketRepository
 
 _logger = logging.getLogger(__name__)
+
+# A sprint name that stands for whichever sprint is in progress.
+CURRENT_SPRINT = 'current'
 
 
 class KeyNotResolved(Exception):
@@ -53,9 +56,45 @@ class TicketsService:
         A space synced within its source's window is skipped. force_fetch re-reads everything, which deletes the
         local copy of tickets gone from the space. If a source can't be reached, its spaces log a warning.
         """
-        origins = {project.tickets for project in self._config.projects if project.tickets}
-        for origin in sorted(origins, key=lambda origin: (origin.source, origin.space)):
+        for origin in self._origins(()):
             self._sync_space(origin.source, origin.space, force_fetch)
+
+    def list_tickets(
+        self,
+        project_slugs: Sequence[str] = (),
+        statuses: Sequence[str] = (),
+        sprint_name: str | None = None,
+        assignee_slug: str | None = None,
+        updated_since: datetime | None = None,
+        force_fetch: bool = False,
+    ) -> list[Ticket]:
+        """The full tickets matching every filter given, sorted by key, after syncing their projects' spaces."""
+        origins = self._origins(project_slugs)
+        for origin in origins:
+            self._sync_space(origin.source, origin.space, force_fetch)
+        current = sprint_name == CURRENT_SPRINT
+        tickets = self._ticket_repository.find(
+            origins,
+            statuses=statuses,
+            sprint_name=None if current else sprint_name,
+            sprint_state=SprintState.IN_PROGRESS if current else None,
+            assignee_by_source=self._assignee_by_source(assignee_slug) if assignee_slug else None,
+            updated_since=updated_since,
+        )
+        return sorted(tickets, key=lambda ticket: key_order(ticket.key))
+
+    def _assignee_by_source(self, person_slug: str) -> dict[str, str]:
+        person = self._config.person(person_slug)
+        return {source: str(identity) for source, identity in person.identity_by_source.items()}
+
+    def _origins(self, project_slugs: Sequence[str]) -> list[TicketOrigin]:
+        # The ticket origins of those projects, or of every project, each once.
+        origins = {
+            project.tickets
+            for project in self._config.projects
+            if project.tickets and (not project_slugs or project.slug in project_slugs)
+        }
+        return sorted(origins, key=lambda origin: (origin.source, origin.space))
 
     def _resolve(self, key: str) -> tuple[str, str]:
         # Returns the source and its own key.
@@ -129,3 +168,4 @@ def _local_copy(source: str, key: str, stored: StoredTicket | None) -> Ticket:
         raise SourceUnreachable(f'{source} unreachable, and {key} has no local copy')
     _logger.warning('%s unreachable, %s is a local copy from %s', source, key, f'{stored.fetched_at:%Y-%m-%d}')
     return stored.ticket
+

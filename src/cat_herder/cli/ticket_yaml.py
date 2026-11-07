@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from typing import Any
 
@@ -18,9 +19,8 @@ def ticket_to_yaml(ticket: Ticket, config: Config, brief: bool = False, changes:
     """
     person_by_identity = _person_by_identity(config, ticket.source)
     project = config.project_for(ticket.source, ticket.space)
-    qualified = len(config.sources_for_key_prefix(ticket.space)) > 1
     document: dict[str, Any] = {
-        'key': f'{ticket.source}:{ticket.key}' if qualified else ticket.key,
+        'key': _key(config, ticket),
         'title': ticket.title,
         'project': project.slug if project else None,
         'type': ticket.type,
@@ -53,7 +53,12 @@ def ticket_to_yaml(ticket: Ticket, config: Config, brief: bool = False, changes:
         ]
     if changes:
         document['changes'] = [_change(person_by_identity, change) for change in ticket.changes]
-    return yaml.dump(document, Dumper=_Dumper, sort_keys=False, allow_unicode=True, default_flow_style=None, width=1000)
+    return _dump(document)
+
+
+def tickets_to_yaml(tickets: Iterable[Ticket], config: Config) -> str:
+    """The tickets as list shows them: some of the ticket schema's fields, with the same names and rules."""
+    return _dump([_listed(config, ticket) for ticket in tickets])
 
 
 class _Dumper(yaml.SafeDumper):
@@ -78,6 +83,32 @@ def _represent_block(dumper: yaml.SafeDumper, value: _Block) -> yaml.MappingNode
 
 _Dumper.add_representer(str, _represent_str)
 _Dumper.add_representer(_Block, _represent_block)
+
+
+def _dump(document: object) -> str:
+    return yaml.dump(document, Dumper=_Dumper, sort_keys=False, allow_unicode=True, default_flow_style=None, width=1000)
+
+
+def _listed(config: Config, ticket: Ticket) -> dict[str, Any]:
+    project = config.project_for(ticket.source, ticket.space)
+    return {
+        'key': _key(config, ticket),
+        'title': ticket.title,
+        'project': project.slug if project else None,
+        'type': ticket.type,
+        'status': ticket.status,
+        'assignee': _person(_person_by_identity(config, ticket.source), ticket.assignee) if ticket.assignee else None,
+        'points': _number(ticket.points),
+        'estimated_hours': _number(ticket.estimated_hours),
+        'custom_fields': {name: _number(value) for name, value in ticket.custom_fields.items()},
+        'sprints': [sprint.name for sprint in ticket.sprints],
+        'updated': _date(ticket.updated),
+    }
+
+
+def _key(config: Config, ticket: Ticket) -> str:
+    qualified = len(config.sources_for_key_prefix(ticket.space)) > 1
+    return f'{ticket.source}:{ticket.key}' if qualified else ticket.key
 
 
 def _person_by_identity(config: Config, source: str) -> dict[str, str]:

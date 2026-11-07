@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
@@ -102,3 +103,8 @@ class Ticket:
     links: tuple[Link, ...] = ()
     linked: tuple[TicketSummary, ...] = ()
     changes: tuple[Change, ...] = ()
+
+
+def key_order(key: str) -> tuple[str | int, ...]:
+    """Sorts keys as their sources do, with SAT-8 before SAT-10."""
+    return tuple(int(part) if part.isdigit() else part for part in re.split(r'(\d+)', key))

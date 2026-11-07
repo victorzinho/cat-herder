@@ -23,4 +23,5 @@ def run(args: argparse.Namespace, config: Config, environ: Mapping[str, str], cw
     sources = build_ticket_sources(config, environ)
     with database_session(open_database(config.data_dir)) as session:
         TicketsService(config, session, sources, current_git_repository(config, cwd)).sync(args.force_fetch)
+    print('Sync done.')
     return 0
