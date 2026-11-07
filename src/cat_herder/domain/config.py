@@ -13,6 +13,23 @@ class Access(StrEnum):
 
 
 @dataclass(frozen=True, kw_only=True)
+class EnvCredential:
+    """A credential read from an environment variable."""
+
+    name: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class CommandCredential:
+    """A credential printed by a command, such as a secret store's CLI."""
+
+    command: str
+
+
+type Credential = EnvCredential | CommandCredential
+
+
+@dataclass(frozen=True, kw_only=True)
 class SourceConfig:
     """What every source has, whatever its kind."""
 
@@ -43,8 +60,8 @@ class JiraSourceConfig(TicketSourceConfig):
     points_field: str | None = None
     sprints_field: str | None = None
     custom_fields: dict[str, str] = field(default_factory=dict[str, str])
-    email_env: str
-    token_env: str
+    email: Credential
+    token: Credential
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -53,7 +70,7 @@ class TogglSourceConfig(TimeSourceConfig):
 
     workspace: int
     history_from: date
-    token_env: str
+    token: Credential
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -114,6 +131,29 @@ class Config:
 
     def project(self, slug: str) -> Project:
         return _by_slug(self.projects, slug)
+
+    def project_for(self, source: str, space: str) -> Project | None:
+        """The project with its tickets in that space of that source, if any."""
+        return next(
+            (project for project in self.projects if project.tickets == TicketOrigin(source=source, space=space)),
+            None,
+        )
+
+    def ticket_sources(self) -> tuple[str, ...]:
+        """Slugs of the ticket sources."""
+        return tuple(source.slug for source in self.sources if isinstance(source, TicketSourceConfig))
+
+    def sources_for_key_prefix(self, prefix: str) -> tuple[str, ...]:
+        """The ticket sources a key with this prefix can come from, such as SAT for SAT-7.
+
+        The prefix is a space's name, and each source names its own spaces, so two sources can both have a SAT.
+        With projects sat (jira, SAT) and sat-meteo (other, SAT), SAT gives ('jira', 'other'), and a WEB only in jira
+        gives ('jira',). A prefix that no project uses can come from any ticket source, so it gives all of them.
+        """
+        in_projects = {
+            project.tickets.source for project in self.projects if project.tickets and project.tickets.space == prefix
+        }
+        return tuple(sorted(in_projects)) or self.ticket_sources()
 
 
 class _Slugged(Protocol):

@@ -26,14 +26,14 @@ sources:
     done_statuses: [Done]
     blocking_relation: blocks
     fields: {points: customfield_10035, sprints: customfield_10020}
-    credentials_env: {email: JIRA_EMAIL, token: JIRA_TOKEN}
+    credentials: {email: {env: JIRA_EMAIL}, token: {command: pass show jira/token}}
   toggl:
     type: toggl
     workspace: 123
     access: read-only
     fetch_window_seconds: 900
     history_from: 2026-01-01
-    credentials_env: {token: TOGGL_TOKEN}
+    credentials: {token: {env: TOGGL_TOKEN}}
 
 repositories:
   web: /code/web
@@ -51,7 +51,7 @@ projects:
 - `blocking_relation`: your Jira's wording for "A blocks B". Sprint reports use it to show blocked tickets.
 - `fields`: where your Jira keeps points and sprints. These IDs are different in every Jira.
 - `history_from`: how far back to read Toggl entries.
-- `credentials_env`: the names of the environment variables holding your credentials. Set them before running the tool.
+- `credentials`: where to read each credential: `{env: NAME}` for an environment variable, or `{command: ...}` for a command that prints it, such as your secret store's. They're read only when the tool contacts the source.
 
 The tool won't run without a config. To keep it somewhere else, point `CAT_HERDER_CONFIG` at it.
 

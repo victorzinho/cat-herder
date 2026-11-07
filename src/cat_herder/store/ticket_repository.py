@@ -127,11 +127,11 @@ class TicketRepository:
         row.parent = self._save_summary(ticket.parent) if ticket.parent else None
         row.children = [self._save_summary(child) for child in ticket.children]
 
-        rows_by_key = {ticket.key: row} | {linked.key: self._save_summary(linked) for linked in ticket.linked}
+        row_by_key = {ticket.key: row} | {linked.key: self._save_summary(linked) for linked in ticket.linked}
         self._session.flush()
         self._session.execute(delete(LinkRow).where(or_(LinkRow.from_id == row.id, LinkRow.to_id == row.id)))
         self._session.add_all(
-            LinkRow(from_ticket=rows_by_key[link.from_key], relation=link.relation, to_ticket=rows_by_key[link.to_key])
+            LinkRow(from_ticket=row_by_key[link.from_key], relation=link.relation, to_ticket=row_by_key[link.to_key])
             for link in ticket.links
         )
         self._session.flush()
@@ -145,6 +145,12 @@ class TicketRepository:
             select(LinkRow).where(or_(LinkRow.from_id == row.id, LinkRow.to_id == row.id)).order_by(LinkRow.id)
         ).all()
         return StoredTicket(ticket=_ticket_from_rows(row, links), fetched_at=row.fetched_at)
+
+    def delete(self, source: str, key: str) -> None:
+        """Delete the ticket with its links, and leave its stored children without parent. A missing one is ignored."""
+        if row := self._row(source, key):
+            self._session.delete(row)
+            self._session.flush()
 
     def _row(self, source: str, key: str) -> TicketRow | None:
         return self._session.scalars(select(TicketRow).where(TicketRow.source == source, TicketRow.key == key)).first()

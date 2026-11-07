@@ -33,10 +33,14 @@ TICKET_FIELDS = (
     'timeoriginalestimate',
 )
 
-_SPRINT_STATES = {'future': SprintState.NOT_STARTED, 'active': SprintState.IN_PROGRESS, 'closed': SprintState.ENDED}
-# History items for these fields carry no fieldId.
-_FIELDS_WITHOUT_ID = {'IssueParentAssociation': 'parent', 'Link': 'links'}
-_FIELDS_BY_ID = {
+_SPRINT_STATE_BY_JIRA_STATE = {
+    'future': SprintState.NOT_STARTED,
+    'active': SprintState.IN_PROGRESS,
+    'closed': SprintState.ENDED,
+}
+# History items for these fields carry no fieldId, only a name.
+_FIELD_BY_NAME = {'IssueParentAssociation': 'parent', 'Link': 'links'}
+_FIELD_BY_ID = {
     'summary': 'title',
     'status': 'status',
     'issuetype': 'type',
@@ -126,7 +130,7 @@ def _sprint(config: JiraSourceConfig, sprint: JsonObject) -> Sprint:
         source=config.slug,
         id=str(sprint['id']),
         name=sprint['name'],
-        state=_SPRINT_STATES[sprint['state']],
+        state=_SPRINT_STATE_BY_JIRA_STATE[sprint['state']],
         start=_optional_datetime(sprint.get('startDate')),
         planned_end=_optional_datetime(sprint.get('endDate')),
         actual_end=_optional_datetime(sprint.get('completeDate')),
@@ -160,17 +164,17 @@ def _attachment(attachment: JsonObject) -> Attachment:
 
 
 def _changes(config: JiraSourceConfig, histories: list[JsonObject]) -> list[Change]:
-    field_names = _FIELDS_BY_ID | {field_id: f'custom_fields.{name}' for name, field_id in config.custom_fields.items()}
+    field_by_id = _FIELD_BY_ID | {field_id: f'custom_fields.{name}' for name, field_id in config.custom_fields.items()}
     if config.points_field:
-        field_names[config.points_field] = 'points'
+        field_by_id[config.points_field] = 'points'
     if config.sprints_field:
-        field_names[config.sprints_field] = 'sprints'
+        field_by_id[config.sprints_field] = 'sprints'
     changes: list[Change] = []
     for history in histories:
         author: JsonObject | None = history.get('author')
         for item in history['items']:
             field_id: str | None = item.get('fieldId')
-            field = field_names.get(field_id) if field_id else _FIELDS_WITHOUT_ID.get(item['field'])
+            field = field_by_id.get(field_id) if field_id else _FIELD_BY_NAME.get(item['field'])
             if not field:
                 continue
             before, after = _change_values(field, item)

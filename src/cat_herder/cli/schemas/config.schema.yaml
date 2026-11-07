@@ -35,7 +35,7 @@ properties:
           then: {$ref: '#/$defs/toggl_source'}
   people:
     type: object
-    description: People, by slug. Someone with no entry here appears as unknown, and their hours still count.
+    description: People, by slug. Someone with no entry here appears as unknown, with their ID in the source, and their hours still count.
     propertyNames: {$ref: '#/$defs/slug'}
     additionalProperties: {$ref: '#/$defs/person'}
   repositories:
@@ -57,10 +57,25 @@ $defs:
     description: Lowercase letters, digits and hyphens.
     pattern: '^[a-z0-9][a-z0-9-]*$'
 
-  env_var:
-    type: string
-    description: Name of an environment variable. The tool reads it, and fails if the credentials don't work.
-    pattern: '^[A-Za-z_][A-Za-z0-9_]*$'
+  credential:
+    description: Where the tool reads a credential when it first contacts the source. A wrong one is a source error.
+    oneOf:
+      - type: object
+        additionalProperties: false
+        required: [env]
+        properties:
+          env:
+            type: string
+            description: Name of the environment variable holding it.
+            pattern: '^[A-Za-z_][A-Za-z0-9_]*$'
+      - type: object
+        additionalProperties: false
+        required: [command]
+        properties:
+          command:
+            type: string
+            description: Command that prints it, such as a secret store's CLI. Split like a shell does, but run without one.
+            minLength: 1
 
   access:
     type: string
@@ -69,14 +84,14 @@ $defs:
 
   fetch_window_seconds:
     type: integer
-    description: Data fetched this recently isn't fetched again. After a connection failure, the source is also skipped for this long.
+    description: Data fetched this recently isn't fetched again.
     minimum: 0
 
   jira_source:
     type: object
     description: A Jira Cloud instance.
     additionalProperties: false
-    required: [type, url, access, fetch_window_seconds, done_statuses, credentials_env]
+    required: [type, url, access, fetch_window_seconds, done_statuses, credentials]
     properties:
       type: {const: jira}
       url:
@@ -120,20 +135,19 @@ $defs:
         propertyNames: {$ref: '#/$defs/slug'}
         additionalProperties:
           type: string
-      credentials_env:
+      credentials:
         type: object
-        description: Environment variables holding the credentials.
         additionalProperties: false
         required: [email, token]
         properties:
-          email: {$ref: '#/$defs/env_var'}
-          token: {$ref: '#/$defs/env_var'}
+          email: {$ref: '#/$defs/credential'}
+          token: {$ref: '#/$defs/credential'}
 
   toggl_source:
     type: object
     description: A Toggl Track workspace.
     additionalProperties: false
-    required: [type, workspace, access, fetch_window_seconds, history_from, credentials_env]
+    required: [type, workspace, access, fetch_window_seconds, history_from, credentials]
     properties:
       type: {const: toggl}
       workspace:
@@ -145,13 +159,12 @@ $defs:
         type: string
         format: date
         description: Date the first fetch starts from. Earlier entries are never fetched.
-      credentials_env:
+      credentials:
         type: object
-        description: Environment variables holding the credentials.
         additionalProperties: false
         required: [token]
         properties:
-          token: {$ref: '#/$defs/env_var'}
+          token: {$ref: '#/$defs/credential'}
 
   person:
     type: object
@@ -239,14 +252,14 @@ examples:
         blocking_relation: blocks
         fields: {points: customfield_10035, sprints: customfield_10020}
         custom_fields: {size: customfield_10043}
-        credentials_env: {email: JIRA_EMAIL, token: JIRA_TOKEN}
+        credentials: {email: {env: JIRA_EMAIL}, token: {command: pass show jira/token}}
       toggl:
         type: toggl
         workspace: 123
         access: read-only
         fetch_window_seconds: 900
         history_from: '2026-01-01'
-        credentials_env: {token: TOGGL_TOKEN}
+        credentials: {token: {env: TOGGL_TOKEN}}
     people:
       ana:
         identities: {jira: <account id>, toggl: 456}

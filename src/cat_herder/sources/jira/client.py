@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Any, cast
 
 import httpx
@@ -18,13 +19,17 @@ class JiraClient:
     """Jira Cloud's REST API v3, raising source exceptions instead of httpx's.
 
     The url is the API's base: a site such as https://example.atlassian.net for classic tokens, or
-    https://api.atlassian.com/ex/jira/<cloud id> for scoped ones.
+    https://api.atlassian.com/ex/jira/<cloud id> for scoped ones. credentials gives the email and token, and is only
+    called on the first request.
     """
 
-    def __init__(self, url: str, email: str, token: str, transport: httpx.BaseTransport | None = None) -> None:
+    def __init__(
+        self, url: str, credentials: Callable[[], tuple[str, str]], transport: httpx.BaseTransport | None = None
+    ) -> None:
+        self._credentials = credentials
+        self._auth: httpx.BasicAuth | None = None
         self._http = httpx.Client(
             base_url=f'{url.rstrip("/")}/rest/api/3/',
-            auth=(email, token),
             headers={'Accept': 'application/json'},
             timeout=httpx.Timeout(READ_TIMEOUT_SECONDS, connect=CONNECT_TIMEOUT_SECONDS),
             transport=transport,
@@ -38,8 +43,9 @@ class JiraClient:
 
     def _send(self, request: httpx.Request) -> JsonObject:
         described = f'{request.method} {request.url}'
+        self._auth = self._auth or httpx.BasicAuth(*self._credentials())
         try:
-            response = self._http.send(request)
+            response = self._http.send(request, auth=self._auth)
         except (httpx.ConnectError, httpx.ConnectTimeout) as error:
             raise SourceUnreachable(f'{described}: {error}') from error
         except httpx.HTTPError as error:

@@ -35,7 +35,7 @@ properties:
     description: The source's name for the status, with no translation.
   assignee:
     type: [string, 'null']
-    description: Person slug. `unknown` when the source's user has no entry in `people`, which can't be written.
+    description: Person slug. `unknown (<source ID>)` when the source's user has no entry in `people`, which can't be written.
   points:
     type: [number, 'null']
     minimum: 0
@@ -108,7 +108,7 @@ properties:
       properties:
         author:
           type: string
-          description: Person slug, or `unknown`.
+          description: Person slug, `unknown (<source ID>)` for a user with no entry in `people`, or `unknown` for one with no ID, such as an automation.
         date:
           type: string
           format: date-time
@@ -148,7 +148,7 @@ properties:
           type: string
         person:
           type: string
-          description: Person slug, or `unknown`.
+          description: Person slug, `unknown (<source ID>)` for a user with no entry in `people`, or `unknown` for one with no ID, such as an automation.
         from:
           description: Value before the change.
         to:

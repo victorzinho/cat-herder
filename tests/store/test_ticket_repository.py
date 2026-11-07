@@ -188,6 +188,30 @@ def test_a_mention_updates_a_stored_ticket_but_keeps_the_rest(session: Session) 
     )
 
 
+def test_delete_removes_the_ticket_its_links_and_its_childrens_parent(session: Session) -> None:
+    # GIVEN SAT-7 stored, with its child SAT-8 and SAT-9, which it blocks, stored too
+    repository = TicketRepository(session)
+    sat_7 = new_ticket_summary(key='SAT-7')
+    repository.save(new_ticket(key='SAT-8', parent=sat_7), FETCHED_AT)
+    repository.save(new_ticket(
+        key='SAT-9',
+        links=(new_link(from_key='SAT-7', to_key='SAT-9'),),
+        linked=(sat_7,),
+    ), FETCHED_AT)
+    repository.save(new_ticket(key='SAT-7'), FETCHED_AT)
+
+    # WHEN
+    repository.delete('jira', 'SAT-7')
+
+    # THEN
+    sat_8, sat_9 = repository.get('jira', 'SAT-8'), repository.get('jira', 'SAT-9')
+    assert sat_8
+    assert sat_9
+    assert repository.get('jira', 'SAT-7') is None
+    assert sat_8.ticket.parent is None
+    assert sat_9.ticket.links == ()
+
+
 def test_saving_a_naive_datetime_raises(session: Session) -> None:
     # GIVEN
     repository = TicketRepository(session)

@@ -6,7 +6,7 @@ sources:
     access: full
     fetch_window_seconds: 60
     done_statuses: [Done]
-    credentials_env: {email: JIRA_EMAIL, token: JIRA_TOKEN}
+    credentials: {email: {env: JIRA_EMAIL}, token: {env: JIRA_TOKEN}}
 projects:
   sat:
     tickets: {source: jira}

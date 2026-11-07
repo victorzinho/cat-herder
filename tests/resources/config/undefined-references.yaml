@@ -7,14 +7,14 @@ sources:
     access: full
     fetch_window_seconds: 60
     done_statuses: [Done]
-    credentials_env: {email: JIRA_EMAIL, token: JIRA_TOKEN}
+    credentials: {email: {env: JIRA_EMAIL}, token: {env: JIRA_TOKEN}}
   toggl:
     type: toggl
     workspace: 123
     access: read-only
     fetch_window_seconds: 900
     history_from: '2026-01-01'
-    credentials_env: {token: TOGGL_TOKEN}
+    credentials: {token: {env: TOGGL_TOKEN}}
 people:
   ana:
     identities: {gitlab: ana}

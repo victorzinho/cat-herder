@@ -1,0 +1,78 @@
+key: SAT-7
+title: Retry failed meteo imports
+project: sat
+type: Task
+status: In progress
+assignee: ana
+points: 5
+estimated_hours: 5
+custom_fields: {size: 🔥, team: meteo-team}
+spent_hours: no time source
+parent: {key: SAT-2, status: In progress, title: Meteo pipeline}
+children:
+  - {key: SAT-8, status: To do, title: Add import metrics}
+  - {key: SAT-10, status: Done, title: Alert on failed imports}
+sprints: [All Sprint 1, All Sprint 2]
+labels: [backend]
+components: [import]
+created: '2026-10-12T09:30:00Z'
+updated: '2026-10-28T16:05:00Z'
+description: The import fails **silently** when the provider times out.
+links:
+  - {from: SAT-7, relation: blocks, to: SAT-9, other_status: To do, other_title: Publish meteo layer}
+  - {from: SAT-4, relation: blocks, to: SAT-7, other_status: Resolved, other_title: Rotate API keys}
+comments:
+  - author: ana
+    date: '2026-10-20T11:00:00Z'
+    body: Reproduced it with a 30 s timeout.
+  - author: unknown
+    date: '2026-10-21T07:15:00Z'
+    body: Retries scheduled by automation.
+attachments:
+  - {filename: trace.log, size: 48213, created: '2026-10-20T11:02:00Z', path: null}
+changes:
+  - field: status
+    person: ana
+    from: To do
+    to: In progress
+    date: '2026-10-21T08:00:00Z'
+  - field: assignee
+    person: ana
+    from: null
+    to: ana
+    date: '2026-10-21T08:00:00Z'
+  - field: estimated_hours
+    person: unknown (account-victor)
+    from: '10'
+    to: '5'
+    date: '2026-10-22T07:30:00Z'
+  - field: points
+    person: unknown (account-victor)
+    from: '10'
+    to: '5'
+    date: '2026-10-22T07:30:00Z'
+  - field: sprints
+    person: unknown (account-victor)
+    from: null
+    to: All Sprint 1
+    date: '2026-10-22T07:30:00Z'
+  - field: custom_fields.size
+    person: unknown (account-victor)
+    from: 🌋
+    to: 🔥
+    date: '2026-10-22T07:30:00Z'
+  - field: parent
+    person: unknown (account-victor)
+    from: null
+    to: SAT-2
+    date: '2026-10-22T07:30:00Z'
+  - field: links
+    person: unknown (account-victor)
+    from: null
+    to: This work item blocks SAT-9
+    date: '2026-10-22T07:30:00Z'
+  - field: title
+    person: unknown
+    from: Retry meteo imports
+    to: Retry failed meteo imports
+    date: '2026-10-23T06:00:00Z'

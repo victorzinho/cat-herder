@@ -176,6 +176,6 @@ def test_fetch_ticket_raises_for_a_custom_field_with_several_values() -> None:
 def _source(
     jira_api: Callable[[httpx.Request], httpx.Response], config: JiraSourceConfig = JIRA_CONFIG
 ) -> TicketSource:
-    client = JiraClient(config.url, 'ana@example.com', 'token', transport=httpx.MockTransport(jira_api))
+    client = JiraClient(config.url, lambda: ('ana@example.com', 'token'), transport=httpx.MockTransport(jira_api))
     return JiraSource(config, client)
 

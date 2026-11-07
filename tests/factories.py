@@ -1,7 +1,8 @@
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
+from cat_herder.domain.config import Access, EnvCredential, JiraSourceConfig, TogglSourceConfig
 from cat_herder.domain.ticket import (
     Attachment,
     Change,
@@ -37,6 +38,23 @@ _TICKET = Ticket(
 )
 _TICKET_SUMMARY = TicketSummary(source='jira', key='SAT-2', title='Another ticket', status='To do', type='Task')
 _LINK = Link(from_key='SAT-1', relation='blocks', to_key='SAT-2')
+_JIRA_SOURCE_CONFIG = JiraSourceConfig(
+    slug='jira',
+    access=Access.FULL,
+    fetch_window_seconds=60,
+    done_statuses=('Done',),
+    url='https://example.atlassian.net',
+    email=EnvCredential(name='JIRA_EMAIL'),
+    token=EnvCredential(name='JIRA_TOKEN'),
+)
+_TOGGL_SOURCE_CONFIG = TogglSourceConfig(
+    slug='toggl',
+    access=Access.READ_ONLY,
+    fetch_window_seconds=900,
+    workspace=1,
+    history_from=date(2026, 1, 1),
+    token=EnvCredential(name='TOGGL_TOKEN'),
+)
 _CHANGE = Change(field='status', author='account-ana', before='To do', after='In progress', date=_DATE)
 
 
@@ -67,3 +85,10 @@ def new_link(**overrides: Any) -> Link:
 def new_change(**overrides: Any) -> Change:
     return replace(_CHANGE, **overrides)
 
+
+def new_jira_source_config(**overrides: Any) -> JiraSourceConfig:
+    return replace(_JIRA_SOURCE_CONFIG, **overrides)
+
+
+def new_toggl_source_config(**overrides: Any) -> TogglSourceConfig:
+    return replace(_TOGGL_SOURCE_CONFIG, **overrides)

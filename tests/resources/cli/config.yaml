@@ -1,0 +1,18 @@
+# The tests run from a temporary directory, which holds data_dir.
+data_dir: data
+sources:
+  jira:
+    type: jira
+    url: https://example.atlassian.net
+    access: full
+    fetch_window_seconds: 60
+    done_statuses: [Done]
+    fields: {points: customfield_10035, sprints: customfield_10020}
+    custom_fields: {size: customfield_10043, team: customfield_10044}
+    credentials: {email: {env: JIRA_EMAIL}, token: {env: JIRA_TOKEN}}
+people:
+  ana:
+    identities: {jira: account-ana}
+projects:
+  sat:
+    tickets: {source: jira, space: SAT}

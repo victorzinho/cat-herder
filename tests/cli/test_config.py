@@ -3,10 +3,12 @@ from pathlib import Path
 
 import pytest
 
-from cat_herder.cli.config import DEFAULT_CONFIG_PATH, ConfigError, find_config, load_config
+from cat_herder.cli.config import CONFIG_PATH_ENV, ConfigError, load_config
 from cat_herder.domain.config import (
     Access,
+    CommandCredential,
     Config,
+    EnvCredential,
     JiraSourceConfig,
     Person,
     Project,
@@ -19,19 +21,27 @@ from cat_herder.domain.config import (
 RESOURCES = Path(__file__).parent.parent / 'resources' / 'config'
 
 
-def test_find_config_uses_the_environment_variable() -> None:
-    # WHEN / THEN
-    assert find_config({'CAT_HERDER_CONFIG': '~/elsewhere.yaml'}) == Path.home() / 'elsewhere.yaml'
+@pytest.mark.parametrize(('environ', 'expected_path'), [
+        pytest.param({CONFIG_PATH_ENV: '~/elsewhere.yaml'}, '~/elsewhere.yaml', id='environment-variable'),
+        pytest.param({}, '~/.config/cat-herder/config.yaml', id='default'),
+])
+def test_load_config_reads_the_config_path(
+    environ: dict[str, str], expected_path: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # GIVEN an empty home, where no config exists
+    monkeypatch.setenv('HOME', str(tmp_path))
 
+    # WHEN
+    with pytest.raises(ConfigError) as error_info:
+        load_config(environ)
 
-def test_find_config_defaults_to_the_user_config_directory() -> None:
-    # WHEN / THEN
-    assert find_config({}) == DEFAULT_CONFIG_PATH.expanduser()
+    # THEN
+    assert str(error_info.value) == f'{Path(expected_path).expanduser()}: No such file or directory'
 
 
 def test_load_config_builds_every_option() -> None:
     # WHEN
-    config = load_config(RESOURCES / 'every-option.yaml')
+    config = load_config({CONFIG_PATH_ENV: str(RESOURCES / 'every-option.yaml')})
 
     # THEN
     assert config == Config(
@@ -49,8 +59,8 @@ def test_load_config_builds_every_option() -> None:
                 points_field='customfield_10035',
                 sprints_field='customfield_10020',
                 custom_fields={'size': 'customfield_10043'},
-                email_env='JIRA_EMAIL',
-                token_env='JIRA_TOKEN',
+                email=EnvCredential(name='JIRA_EMAIL'),
+                token=CommandCredential(command='pass show jira/token'),
             ),
             TogglSourceConfig(
                 slug='toggl',
@@ -58,7 +68,7 @@ def test_load_config_builds_every_option() -> None:
                 fetch_window_seconds=900,
                 workspace=123,
                 history_from=date(2026, 1, 1),
-                token_env='TOGGL_TOKEN',
+                token=EnvCredential(name='TOGGL_TOKEN'),
             ),
         ),
         people=(
@@ -97,6 +107,8 @@ def test_load_config_builds_every_option() -> None:
             'source-errors.yaml',
             [
                 "$.sources.jira: Additional properties are not allowed ('fieldz' was unexpected)",
+                "$.sources.toggl.credentials.token: {'env': 'TOGGL_TOKEN', 'command': 'pass show toggl/token'} is not "
+                'valid under any of the given schemas',
                 "$.sources.toggl.history_from: '2026-13-01' is not a 'date'",
             ],
             id='errors inside sources',
@@ -122,7 +134,7 @@ def test_load_config_lists_every_problem(filename: str, problems: list[str]) -> 
 
     # WHEN
     with pytest.raises(ConfigError) as error_info:
-        load_config(path)
+        load_config({CONFIG_PATH_ENV: str(path)})
 
     # THEN
     assert str(error_info.value).splitlines() == [f'{path}: {problem}' for problem in problems]

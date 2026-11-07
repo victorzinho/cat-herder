@@ -16,6 +16,10 @@ class JiraSource:
         self._config = config
         self._client = client
 
+    @property
+    def slug(self) -> str:
+        return self._config.slug
+
     def fetch_ticket(self, key: str) -> Ticket:
         """See TicketSource.fetch_ticket. A ticket moved to another space comes back with its new key."""
         try:

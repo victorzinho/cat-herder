@@ -9,7 +9,10 @@ from jsonschema import Draft202012Validator
 
 from cat_herder.domain.config import (
     Access,
+    CommandCredential,
     Config,
+    Credential,
+    EnvCredential,
     JiraSourceConfig,
     Person,
     Project,
@@ -30,17 +33,13 @@ class ConfigError(Exception):
     """The config can't be used. The message has one line per problem, each starting with the config's path."""
 
 
-def find_config(environ: Mapping[str, str]) -> Path:
-    """Return the path in CAT_HERDER_CONFIG, or the default one, with `~` expanded."""
-    return Path(environ.get(CONFIG_PATH_ENV) or DEFAULT_CONFIG_PATH).expanduser()
-
-
-def load_config(path: Path) -> Config:
-    """Read and validate the config at path.
+def load_config(environ: Mapping[str, str]) -> Config:
+    """Read and validate the config at CAT_HERDER_CONFIG, or at the default path, with `~` expanded.
 
     Raises:
         ConfigError: if it can't be read, isn't YAML, breaks the schema, or refers to something it doesn't define.
     """
+    path = Path(environ.get(CONFIG_PATH_ENV) or DEFAULT_CONFIG_PATH).expanduser()
     try:
         with path.open() as stream:
             document = yaml.load(stream, Loader=_DatesAsStringsLoader)
@@ -106,8 +105,8 @@ def _source(slug: str, source: dict[str, Any]) -> SourceConfig:
             points_field=fields.get('points'),
             sprints_field=fields.get('sprints'),
             custom_fields=dict(source.get('custom_fields', {})),
-            email_env=source['credentials_env']['email'],
-            token_env=source['credentials_env']['token'],
+            email=_credential(source['credentials']['email']),
+            token=_credential(source['credentials']['token']),
         )
     return TogglSourceConfig(
         slug=slug,
@@ -115,8 +114,14 @@ def _source(slug: str, source: dict[str, Any]) -> SourceConfig:
         fetch_window_seconds=source['fetch_window_seconds'],
         workspace=source['workspace'],
         history_from=date.fromisoformat(source['history_from']),
-        token_env=source['credentials_env']['token'],
+        token=_credential(source['credentials']['token']),
     )
+
+
+def _credential(credential: dict[str, str]) -> Credential:
+    if 'env' in credential:
+        return EnvCredential(name=credential['env'])
+    return CommandCredential(command=credential['command'])
 
 
 def _project(slug: str, project: dict[str, Any]) -> Project:

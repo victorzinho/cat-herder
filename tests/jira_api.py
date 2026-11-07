@@ -3,21 +3,14 @@ from pathlib import Path
 
 import httpx
 
-from cat_herder.domain.config import Access, JiraSourceConfig
+from tests.factories import new_jira_source_config
 
 RESOURCES = Path(__file__).parent / 'resources' / 'sources' / 'jira'
 # The source the resources come from.
-JIRA_CONFIG = JiraSourceConfig(
-    slug='jira',
-    access=Access.FULL,
-    fetch_window_seconds=60,
-    done_statuses=('Done',),
-    url='https://example.atlassian.net',
+JIRA_CONFIG = new_jira_source_config(
     points_field='customfield_10035',
     sprints_field='customfield_10020',
     custom_fields={'size': 'customfield_10043', 'team': 'customfield_10044'},
-    email_env='JIRA_EMAIL',
-    token_env='JIRA_TOKEN',
 )
 
 
@@ -36,3 +29,17 @@ def jira_api_with_sat_7(request: httpx.Request) -> httpx.Response:
         case _:
             return httpx.Response(404, json={'errorMessages': ['Issue does not exist'], 'errors': {}})
     return httpx.Response(200, json=json.loads((RESOURCES / resource).read_text()))
+
+
+class JiraApi:
+    """Jira with SAT-7, or failing to connect while unreachable, keeping every request it gets."""
+
+    def __init__(self) -> None:
+        self.reachable = True
+        self.requests: list[httpx.Request] = []
+
+    def __call__(self, request: httpx.Request) -> httpx.Response:
+        self.requests.append(request)
+        if not self.reachable:
+            raise httpx.ConnectError('Failed', request=request)
+        return jira_api_with_sat_7(request)

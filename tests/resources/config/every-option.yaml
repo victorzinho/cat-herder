@@ -12,14 +12,14 @@ sources:
     blocking_relation: blocks
     fields: {points: customfield_10035, sprints: customfield_10020}
     custom_fields: {size: customfield_10043}
-    credentials_env: {email: JIRA_EMAIL, token: JIRA_TOKEN}
+    credentials: {email: {env: JIRA_EMAIL}, token: {command: pass show jira/token}}
   toggl:
     type: toggl
     workspace: 123
     access: read-only
     fetch_window_seconds: 900
     history_from: 2026-01-01
-    credentials_env: {token: TOGGL_TOKEN}
+    credentials: {token: {env: TOGGL_TOKEN}}
 people:
   ana:
     identities: {jira: abc123, toggl: 456}
