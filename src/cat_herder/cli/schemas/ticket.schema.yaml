@@ -14,7 +14,7 @@ description: |
   Allowed values for `type`, `status` and `links.relation` come from the source. A value the source
   doesn't accept is a source error.
 
-  Source, stable source ID and fetched at are stored but not part of this format.
+  Source and fetched at are stored but not part of this format.
 type: object
 additionalProperties: false
 properties:
@@ -43,7 +43,7 @@ properties:
     type: [number, 'null']
     minimum: 0
     description: Independent from `points`, and either can be empty.
-  custom:
+  custom_fields:
     type: object
     description: |
       The fields in the source's `custom_fields`, by name. A name that isn't configured explodes.
@@ -211,7 +211,7 @@ examples:
     assignee: ana
     points: 5
     estimated_hours: 5
-    custom: {size: 🔥}
+    custom_fields: {size: 🔥}
     spent_hours: 4.5
     parent: {key: SAT-2, status: In progress, title: Meteo pipeline}
     children:

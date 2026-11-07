@@ -6,8 +6,10 @@ readme = "README.md"
 authors = [{ name = "Víctor González" }]
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.20.1",
     "jsonschema>=4.26.0",
     "pyyaml>=6.0.3",
+    "sqlalchemy>=2.1.8",
 ]
 
 [project.scripts]
@@ -41,6 +43,7 @@ typeCheckingMode = "strict"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--import-mode=importlib --strict-markers"
+pythonpath = ["."]  # Makes the helper modules in tests/ importable under importlib mode
 
 [tool.coverage.run]
 source = ["cat_herder"]

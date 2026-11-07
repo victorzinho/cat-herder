@@ -41,7 +41,7 @@ Tickets have a closed set of fields, and only the config can add to it, as custo
 
 | Group | Fields |
 |---|---|
-| **Identity** | Source, key, stable source ID, project |
+| **Identity** | Source, key, project |
 | **Content** | Title, description (markdown), type, labels, components |
 | **Workflow** | Status, assignee, points, estimated hours, parent, sprints |
 | **Dates** | Created, updated, fetched at |
