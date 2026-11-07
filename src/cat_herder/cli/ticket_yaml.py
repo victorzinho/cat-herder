@@ -9,16 +9,22 @@ from cat_herder.domain.ticket import Change, Comment, CustomValue, Link, Ticket,
 
 NO_TIME_SOURCE = 'no time source'
 UNKNOWN_PERSON = 'unknown'
+HOURS_DECIMALS = 2
 
 
-def ticket_to_yaml(ticket: Ticket, config: Config, brief: bool = False, changes: bool = False) -> str:
+def ticket_to_yaml(
+    ticket: Ticket,
+    config: Config,
+    spent_hours: float | None = None,
+    brief: bool = False,
+    changes: bool = False
+) -> str:
     """The ticket in the ticket schema's shape. brief leaves out comments and attachments; changes adds Changes.
 
-    The key is qualified, as in jira:SAT-7, when its space is in several ticket sources. Spent hours are null until
-    time entries are stored.
+    The key is qualified, as in jira:SAT-7, when its space is in several ticket sources.
     """
     person_by_identity = _person_by_identity(config, ticket.source)
-    project = config.project_for(ticket.source, ticket.space)
+    project = config.project_of_ticket(ticket)
     document: dict[str, Any] = {
         'key': _key(config, ticket),
         'title': ticket.title,
@@ -29,7 +35,7 @@ def ticket_to_yaml(ticket: Ticket, config: Config, brief: bool = False, changes:
         'points': _number(ticket.points),
         'estimated_hours': _number(ticket.estimated_hours),
         'custom_fields': {name: _number(value) for name, value in ticket.custom_fields.items()},
-        'spent_hours': None if project and project.time else NO_TIME_SOURCE,
+        'spent_hours': _hours(spent_hours) if project and project.time else NO_TIME_SOURCE,
         'parent': _reference(ticket.parent) if ticket.parent else None,
         'children': [_reference(child) for child in ticket.children],
         'sprints': [sprint.name for sprint in ticket.sprints],
@@ -90,7 +96,7 @@ def _dump(document: object) -> str:
 
 
 def _listed(config: Config, ticket: Ticket) -> dict[str, Any]:
-    project = config.project_for(ticket.source, ticket.space)
+    project = config.project_of_ticket(ticket)
     return {
         'key': _key(config, ticket),
         'title': ticket.title,
@@ -107,7 +113,7 @@ def _listed(config: Config, ticket: Ticket) -> dict[str, Any]:
 
 
 def _key(config: Config, ticket: Ticket) -> str:
-    qualified = len(config.sources_for_key_prefix(ticket.space)) > 1
+    qualified = len(config.ticket_sources_for_key_prefix(ticket.space)) > 1
     return f'{ticket.source}:{ticket.key}' if qualified else ticket.key
 
 
@@ -127,6 +133,10 @@ def _person(person_by_identity: dict[str, str], identity: str | None) -> str:
 
 def _number(value: CustomValue) -> CustomValue | int:
     return int(value) if isinstance(value, float) and value.is_integer() else value
+
+
+def _hours(value: float | None) -> CustomValue | int:
+    return _number(round(value, HOURS_DECIMALS)) if value is not None else None
 
 
 def _date(value: datetime) -> str:

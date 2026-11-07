@@ -1,0 +1,209 @@
+[
+  {
+    "user_id": 456,
+    "username": "ana@example.com",
+    "project_id": 101,
+    "task_id": null,
+    "billable": false,
+    "description": "SAT-7 Retry failed meteo imports",
+    "tag_ids": [],
+    "billable_amount_in_cents": null,
+    "hourly_rate_in_cents": null,
+    "currency": "EUR",
+    "time_entries": [
+      {
+        "id": 9001,
+        "seconds": 7200,
+        "start": "2026-10-20T09:00:00+02:00",
+        "stop": "2026-10-20T11:00:00+02:00",
+        "at": "2026-10-20T09:00:00+02:00",
+        "at_tz": "2026-10-20T09:00:00+02:00"
+      }
+    ],
+    "row_number": 1
+  },
+  {
+    "user_id": 456,
+    "username": "ana@example.com",
+    "project_id": 101,
+    "task_id": null,
+    "billable": false,
+    "description": "SAT-7 Retry failed meteo imports",
+    "tag_ids": [],
+    "billable_amount_in_cents": null,
+    "hourly_rate_in_cents": null,
+    "currency": "EUR",
+    "time_entries": [
+      {
+        "id": 9002,
+        "seconds": 5400,
+        "start": "2026-10-21T10:00:00+02:00",
+        "stop": "2026-10-21T11:30:00+02:00",
+        "at": "2026-10-21T10:00:00+02:00",
+        "at_tz": "2026-10-21T10:00:00+02:00"
+      }
+    ],
+    "row_number": 2
+  },
+  {
+    "user_id": 456,
+    "username": "ana@example.com",
+    "project_id": 101,
+    "task_id": null,
+    "billable": false,
+    "description": "Planning",
+    "tag_ids": [],
+    "billable_amount_in_cents": null,
+    "hourly_rate_in_cents": null,
+    "currency": "EUR",
+    "time_entries": [
+      {
+        "id": 9003,
+        "seconds": 3600,
+        "start": "2026-10-22T09:00:00+02:00",
+        "stop": "2026-10-22T10:00:00+02:00",
+        "at": "2026-10-22T09:00:00+02:00",
+        "at_tz": "2026-10-22T09:00:00+02:00"
+      }
+    ],
+    "row_number": 3
+  },
+  {
+    "user_id": 456,
+    "username": "ana@example.com",
+    "project_id": 101,
+    "task_id": null,
+    "billable": false,
+    "description": "SAT-7 and SAT-8 together",
+    "tag_ids": [],
+    "billable_amount_in_cents": null,
+    "hourly_rate_in_cents": null,
+    "currency": "EUR",
+    "time_entries": [
+      {
+        "id": 9004,
+        "seconds": 1800,
+        "start": "2026-10-23T09:00:00+02:00",
+        "stop": "2026-10-23T09:30:00+02:00",
+        "at": "2026-10-23T09:00:00+02:00",
+        "at_tz": "2026-10-23T09:00:00+02:00"
+      }
+    ],
+    "row_number": 4
+  },
+  {
+    "user_id": 456,
+    "username": "ana@example.com",
+    "project_id": 101,
+    "task_id": null,
+    "billable": false,
+    "description": "WEB-3 Landing page",
+    "tag_ids": [],
+    "billable_amount_in_cents": null,
+    "hourly_rate_in_cents": null,
+    "currency": "EUR",
+    "time_entries": [
+      {
+        "id": 9005,
+        "seconds": 3600,
+        "start": "2026-10-26T09:00:00+01:00",
+        "stop": "2026-10-26T10:00:00+01:00",
+        "at": "2026-10-26T09:00:00+01:00",
+        "at_tz": "2026-10-26T09:00:00+01:00"
+      }
+    ],
+    "row_number": 5
+  },
+  {
+    "user_id": 456,
+    "username": "ana@example.com",
+    "project_id": 101,
+    "task_id": null,
+    "billable": false,
+    "description": "SAT-99 Never existed",
+    "tag_ids": [],
+    "billable_amount_in_cents": null,
+    "hourly_rate_in_cents": null,
+    "currency": "EUR",
+    "time_entries": [
+      {
+        "id": 9006,
+        "seconds": 900,
+        "start": "2026-10-27T09:00:00+01:00",
+        "stop": "2026-10-27T09:15:00+01:00",
+        "at": "2026-10-27T09:00:00+01:00",
+        "at_tz": "2026-10-27T09:00:00+01:00"
+      }
+    ],
+    "row_number": 6
+  },
+  {
+    "user_id": 789,
+    "username": "ana@example.com",
+    "project_id": 102,
+    "task_id": null,
+    "billable": false,
+    "description": "Invoicing",
+    "tag_ids": [],
+    "billable_amount_in_cents": null,
+    "hourly_rate_in_cents": null,
+    "currency": "EUR",
+    "time_entries": [
+      {
+        "id": 9007,
+        "seconds": 3600,
+        "start": "2026-10-28T16:00:00+01:00",
+        "stop": "2026-10-28T17:00:00+01:00",
+        "at": "2026-10-28T16:00:00+01:00",
+        "at_tz": "2026-10-28T16:00:00+01:00"
+      }
+    ],
+    "row_number": 7
+  },
+  {
+    "user_id": 456,
+    "username": "ana@example.com",
+    "project_id": 103,
+    "task_id": null,
+    "billable": false,
+    "description": "Holidays",
+    "tag_ids": [],
+    "billable_amount_in_cents": null,
+    "hourly_rate_in_cents": null,
+    "currency": "EUR",
+    "time_entries": [
+      {
+        "id": 9008,
+        "seconds": 28800,
+        "start": "2026-10-29T09:00:00+01:00",
+        "stop": "2026-10-29T17:00:00+01:00",
+        "at": "2026-10-29T09:00:00+01:00",
+        "at_tz": "2026-10-29T09:00:00+01:00"
+      }
+    ],
+    "row_number": 8
+  },
+  {
+    "user_id": 456,
+    "username": "ana@example.com",
+    "project_id": 101,
+    "task_id": null,
+    "billable": false,
+    "description": "SAT-7 Still running",
+    "tag_ids": [],
+    "billable_amount_in_cents": null,
+    "hourly_rate_in_cents": null,
+    "currency": "EUR",
+    "time_entries": [
+      {
+        "id": 9009,
+        "seconds": -1793350800,
+        "start": "2026-10-30T09:00:00+01:00",
+        "stop": null,
+        "at": "2026-10-30T09:00:00+01:00",
+        "at_tz": "2026-10-30T09:00:00+01:00"
+      }
+    ],
+    "row_number": 9
+  }
+]

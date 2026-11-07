@@ -3,12 +3,11 @@ from pathlib import Path
 import pytest
 
 from cat_herder.cli import main
-from tests.jira_api import JiraApi
 
 RESOURCES = Path(__file__).parents[1] / 'resources' / 'cli'
 
 
-def test_list_prints_the_matching_tickets(jira_api: JiraApi, capsys: pytest.CaptureFixture[str]) -> None:
+def test_list_prints_the_matching_tickets(capsys: pytest.CaptureFixture[str]) -> None:
     # WHEN
     exit_code = main(['list', '--project', 'sat'])
 
@@ -22,7 +21,7 @@ def test_list_prints_the_matching_tickets(jira_api: JiraApi, capsys: pytest.Capt
     pytest.param(['--project', 'sat', '--project', 'web'], 'not configured projects: web', id='unknown-project'),
     pytest.param(['--assignee', 'bob'], 'not a configured person: bob', id='unknown-person'),
 ])
-def test_list_rejects_wrong_filters(jira_api: JiraApi, capsys: pytest.CaptureFixture[str], args: list[str], error: str):
+def test_list_rejects_wrong_filters(capsys: pytest.CaptureFixture[str], args: list[str], error: str):
     # WHEN
     exit_code = main(['list', *args])
 

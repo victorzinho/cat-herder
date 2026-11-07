@@ -29,5 +29,5 @@ projects:
   web:
     tickets: {source: jirra, space: WEB}
     time: {source: toggl, spaces: [Shared]}
-  comercial:
+  admin:
     time: {source: toggl, spaces: [Shared]}

@@ -274,5 +274,5 @@ examples:
         tickets: {source: jira, space: SAT}
         time: {source: toggl, spaces: [SAT-2025, SAT-2026]}
         repositories: [sat, sat-meteo]
-      comercial:
-        time: {source: toggl, spaces: [Comercial]}
+      admin:
+        time: {source: toggl, spaces: [Admin]}

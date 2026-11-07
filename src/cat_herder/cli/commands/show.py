@@ -7,7 +7,8 @@ from cat_herder.cli.git_repositories import current_git_repository
 from cat_herder.cli.ticket_yaml import ticket_to_yaml
 from cat_herder.domain.config import Config
 from cat_herder.services.tickets_service import TicketsService
-from cat_herder.sources.factory import build_ticket_sources
+from cat_herder.services.time_entries_service import TimeEntriesService
+from cat_herder.sources.factory import build_ticket_sources, build_time_sources
 from cat_herder.store.database import database_session, open_database
 
 
@@ -23,16 +24,23 @@ def run(args: argparse.Namespace, config: Config, environ: Mapping[str, str], cw
     """Print the ticket, or report that its source doesn't have it.
 
     Returns:
-        The exit code.
+        The exit code: 2 for a key qualified with a source that isn't a configured ticket source, as for other usage
+        errors.
     """
-    sources = build_ticket_sources(config, environ)
+    source, separator, _ = args.key.rpartition(':')
+    if separator and source not in config.ticket_sources():
+        print(f'cat-herder show: not a configured ticket source: {source}', file=sys.stderr)
+        return 2
     with database_session(open_database(config.data_dir)) as session:
-        service = TicketsService(config, session, sources, current_git_repository(config, cwd))
-        ticket = service.show(args.key, force_fetch=args.force_fetch)
+        git_repo = current_git_repository(config, cwd)
+        tickets_service = TicketsService(config, session, build_ticket_sources(config, environ), git_repo)
+        time_entries_service = TimeEntriesService(config, session, build_time_sources(config, environ))
+        ticket = tickets_service.show(args.key, force_fetch=args.force_fetch)
+        spent_hours = time_entries_service.spent_hours(ticket) if ticket else None
 
     if not ticket:
         print(f'cat-herder: {args.key} is not in its source', file=sys.stderr)
         return 1
 
-    print(ticket_to_yaml(ticket, config, brief=args.brief, changes=args.changes), end='')
+    print(ticket_to_yaml(ticket, config, spent_hours, brief=args.brief, changes=args.changes), end='')
     return 0

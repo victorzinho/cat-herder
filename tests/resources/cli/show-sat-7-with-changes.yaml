@@ -7,7 +7,7 @@ assignee: ana
 points: 5
 estimated_hours: 5
 custom_fields: {size: 🔥, team: meteo-team}
-spent_hours: no time source
+spent_hours: 3.5
 parent: {key: SAT-2, status: In progress, title: Meteo pipeline}
 children:
   - {key: SAT-8, status: To do, title: Add import metrics}

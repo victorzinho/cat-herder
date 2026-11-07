@@ -88,7 +88,7 @@ def test_load_config_builds_every_option() -> None:
                 repositories=('sat',),
             ),
             Project(
-                slug='comercial', tickets=None, time=TimeOrigin(source='toggl', spaces=('Comercial',))
+                slug='admin', tickets=None, time=TimeOrigin(source='toggl', spaces=('Admin',))
             ),
         ),
     )
@@ -118,7 +118,7 @@ def test_load_config_builds_every_option() -> None:
             [
                 "$.people.ana.identities: 'gitlab' is not a defined source",
                 "$.people.ana.weekly_capacity.projects: 'nope' is not a defined project",
-                "$.projects.comercial.time.spaces: 'Shared' is already in project 'web'",
+                "$.projects.admin.time.spaces: 'Shared' is already in project 'web'",
                 "$.projects.sat.repositories: 'sat-meteo' is not a defined repository",
                 "$.projects.sat.tickets.source: 'toggl' is not a defined ticket source",
                 "$.projects.sat.time.source: 'jira' is not a defined time source",

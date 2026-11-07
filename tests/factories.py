@@ -1,5 +1,5 @@
 from dataclasses import replace
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from cat_herder.domain.config import Access, EnvCredential, JiraSourceConfig, TogglSourceConfig
@@ -13,6 +13,7 @@ from cat_herder.domain.ticket import (
     Ticket,
     TicketSummary,
 )
+from cat_herder.domain.time_entry import TimeEntry
 
 # Valid defaults. A test sets every field it asserts on or depends on, and leaves the rest to these.
 _DATE = datetime(2026, 10, 1, 9, tzinfo=UTC)
@@ -55,6 +56,15 @@ _TOGGL_SOURCE_CONFIG = TogglSourceConfig(
     history_from=date(2026, 1, 1),
     token=EnvCredential(name='TOGGL_TOKEN'),
 )
+_TIME_ENTRY = TimeEntry(
+    source='toggl',
+    id='1',
+    space='SAT',
+    person='456',
+    description='Some work',
+    start=_DATE,
+    end=_DATE + timedelta(hours=1),
+)
 _CHANGE = Change(field='status', author='account-ana', before='To do', after='In progress', date=_DATE)
 
 
@@ -92,3 +102,7 @@ def new_jira_source_config(**overrides: Any) -> JiraSourceConfig:
 
 def new_toggl_source_config(**overrides: Any) -> TogglSourceConfig:
     return replace(_TOGGL_SOURCE_CONFIG, **overrides)
+
+
+def new_time_entry(**overrides: Any) -> TimeEntry:
+    return replace(_TIME_ENTRY, **overrides)

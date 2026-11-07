@@ -4,6 +4,9 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Protocol
 
+from cat_herder.domain.ticket import Ticket
+from cat_herder.domain.time_entry import TimeEntry
+
 
 class Access(StrEnum):
     """Permission checked before running an operation on a source."""
@@ -49,7 +52,9 @@ class TicketSourceConfig(SourceConfig):
 
 @dataclass(frozen=True, kw_only=True)
 class TimeSourceConfig(SourceConfig):
-    """What every time source has."""
+    """What every time source has. Entries before history_from are never fetched."""
+
+    history_from: date
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -69,7 +74,6 @@ class TogglSourceConfig(TimeSourceConfig):
     """A Toggl Track workspace."""
 
     workspace: int
-    history_from: date
     token: Credential
 
 
@@ -129,16 +133,32 @@ class Config:
     def source(self, slug: str) -> SourceConfig:
         return _by_slug(self.sources, slug)
 
+    def time_source(self, slug: str) -> TimeSourceConfig:
+        """Raises KeyError if no time source has that slug."""
+        source = self.source(slug)
+        if not isinstance(source, TimeSourceConfig):
+            raise KeyError(slug)
+        return source
+
     def project(self, slug: str) -> Project:
         return _by_slug(self.projects, slug)
 
     def person(self, slug: str) -> Person:
         return _by_slug(self.people, slug)
 
-    def project_for(self, source: str, space: str) -> Project | None:
-        """The project with its tickets in that space of that source, if any."""
+    def project_of_ticket(self, ticket: Ticket) -> Project | None:
+        """The project the ticket's space belongs to, if any."""
+        origin = TicketOrigin(source=ticket.source, space=ticket.space)
+        return next((project for project in self.projects if project.tickets == origin), None)
+
+    def project_of_time_entry(self, entry: TimeEntry) -> Project | None:
+        """The project the entry's space belongs to, if any."""
         return next(
-            (project for project in self.projects if project.tickets == TicketOrigin(source=source, space=space)),
+            (
+                project
+                for project in self.projects
+                if project.time and project.time.source == entry.source and entry.space in project.time.spaces
+            ),
             None,
         )
 
@@ -146,7 +166,7 @@ class Config:
         """Slugs of the ticket sources."""
         return tuple(source.slug for source in self.sources if isinstance(source, TicketSourceConfig))
 
-    def sources_for_key_prefix(self, prefix: str) -> tuple[str, ...]:
+    def ticket_sources_for_key_prefix(self, prefix: str) -> tuple[str, ...]:
         """The ticket sources a key with this prefix can come from, such as SAT for SAT-7.
 
         The prefix is a space's name, and each source names its own spaces, so two sources can both have a SAT.

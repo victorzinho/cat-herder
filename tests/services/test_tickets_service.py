@@ -16,8 +16,8 @@ from cat_herder.sources.errors import SourceUnreachable
 from cat_herder.sources.jira.client import JiraClient
 from cat_herder.sources.jira.source import JiraSource
 from cat_herder.store.database import database_session, open_database
-from cat_herder.store.space_sync_repository import SpaceSyncRepository
 from cat_herder.store.ticket_repository import TicketRepository
+from cat_herder.store.ticket_space_sync_repository import TicketSpaceSyncRepository
 from tests.factories import new_ticket, new_toggl_source_config
 from tests.jira_api import JIRA_CONFIG, JiraApi
 
@@ -176,7 +176,6 @@ def test_show_resolves_the_key_to_its_source(
 @pytest.mark.parametrize(('key', 'message'), [
     pytest.param('SAT-7', 'SAT-7 is in several sources, use one of: jira:SAT-7, other:SAT-7', id='ambiguous'),
     pytest.param('OPS-1', 'OPS-1 is in several sources, use one of: jira:OPS-1, other:OPS-1', id='prefix-no-project'),
-    pytest.param('toggl:SAT-7', 'toggl is not a ticket source: jira, other', id='not-a-ticket-source'),
     pytest.param('SAT', 'SAT is not a ticket key, such as SAT-7', id='not-a-key'),
 ])
 def test_show_raises_for_a_key_that_doesnt_resolve(session: Session, key: str, message: str) -> None:
@@ -224,7 +223,7 @@ def test_sync_fetches_a_space_only_after_the_window_or_when_forced(
     session: Session, jira_api: JiraApi, synced_ago: timedelta, force_fetch: bool, fetches: bool
 ) -> None:
     # GIVEN SAT synced synced_ago
-    SpaceSyncRepository(session).save('jira', 'SAT', datetime.now(UTC) - synced_ago)
+    TicketSpaceSyncRepository(session).save('jira', 'SAT', datetime.now(UTC) - synced_ago)
     cut = _service(session, jira_api)
 
     # WHEN
@@ -243,7 +242,7 @@ def test_sync_after_a_first_sync_fetches_what_changed_unless_forced(
 ) -> None:
     # GIVEN SAT synced long ago, with SAT-99 stored, which Jira no longer has
     long_ago = datetime.now(UTC) - WINDOW * 2
-    SpaceSyncRepository(session).save('jira', 'SAT', long_ago)
+    TicketSpaceSyncRepository(session).save('jira', 'SAT', long_ago)
     _save_in_local_copy(session, new_ticket(key='SAT-99', space='SAT'), long_ago)
     cut = _service(session, jira_api)
 

@@ -179,6 +179,11 @@ class TicketRepository:
             self._session.delete(row)
             self._session.flush()
 
+    def exists(self, source: str, key: str) -> bool:
+        """Whether the ticket is stored in full."""
+        row = self._row(source, key)
+        return bool(row and row.fetched_at)
+
     def keys_in_space(self, source: str, space: str) -> set[str]:
         """Keys of the full tickets stored for that space. Partial ones don't know their space."""
         keys = select(TicketRow.key).where(TicketRow.source == source, TicketRow.space == space)

@@ -1,0 +1,5 @@
+[
+  {"id": 101, "workspace_id": 1, "name": "SAT", "active": true},
+  {"id": 102, "workspace_id": 1, "name": "Admin", "active": true},
+  {"id": 103, "workspace_id": 1, "name": "Holidays", "active": false}
+]

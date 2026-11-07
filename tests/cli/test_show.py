@@ -16,7 +16,7 @@ TICKET_SCHEMA = Draft202012Validator(
 )
 
 
-def test_prints_the_ticket_with_its_changes(jira_api: JiraApi, capsys: pytest.CaptureFixture[str]):
+def test_prints_the_ticket_with_its_changes(capsys: pytest.CaptureFixture[str]):
     # WHEN
     exit_code = main(['show', 'SAT-7', '--changes'])
 
@@ -27,7 +27,7 @@ def test_prints_the_ticket_with_its_changes(jira_api: JiraApi, capsys: pytest.Ca
     assert list(TICKET_SCHEMA.iter_errors(yaml.safe_load(output))) == []  # pyright: ignore[reportUnknownMemberType]
 
 
-def test_brief_leaves_out_comments_and_attachments(jira_api: JiraApi, capsys: CaptureFixture[str]):
+def test_brief_leaves_out_comments_and_attachments(capsys: CaptureFixture[str]):
     # WHEN
     exit_code = main(['show', 'SAT-7', '--brief'])
 
@@ -73,7 +73,16 @@ def test_fails_with_a_message(jira_api: JiraApi, capsys: CaptureFixture[str], ke
     assert (captured.out, captured.err) == ('', error)
 
 
-def test_fails_without_credentials(jira_api: JiraApi, capsys: CaptureFixture[str], monkeypatch: MonkeyPatch):
+def test_rejects_a_key_qualified_with_a_source_that_has_no_tickets(capsys: CaptureFixture[str]):
+    # WHEN
+    exit_code = main(['show', 'toggl:SAT-7'])
+
+    # THEN
+    assert exit_code == 2
+    assert capsys.readouterr().err == 'cat-herder show: not a configured ticket source: toggl\n'
+
+
+def test_fails_without_credentials(capsys: CaptureFixture[str], monkeypatch: MonkeyPatch):
     # GIVEN
     monkeypatch.delenv('JIRA_TOKEN')
 

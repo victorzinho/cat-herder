@@ -12,7 +12,7 @@
 | **Change** | One recorded change to a ticket. |
 | **Attachment** | A file on a ticket. |
 | **Sprint** | Identified by `<source_slug>:<sprint_id>`. People are derived, and it has no owner. |
-| **Time entry** | Datetime range for a person in a project, with a description. Optionally linked to a ticket and/or sprint. |
+| **Time entry** | Identified by `<source_slug>:<entry_id>`. Datetime range for a person in a project, with a description. Optionally linked to a ticket and/or sprint. |
 
 - A `Source` can have multiple `Project`.
 - A `Project` can receive tickets from at most one space in a single ticket `Source`.

@@ -10,9 +10,17 @@ sources:
     fields: {points: customfield_10035, sprints: customfield_10020}
     custom_fields: {size: customfield_10043, team: customfield_10044}
     credentials: {email: {env: JIRA_EMAIL}, token: {env: JIRA_TOKEN}}
+  toggl:
+    type: toggl
+    workspace: 1
+    access: read-only
+    fetch_window_seconds: 900
+    history_from: '2026-01-01'
+    credentials: {token: {env: TOGGL_TOKEN}}
 people:
   ana:
-    identities: {jira: account-ana}
+    identities: {jira: account-ana, toggl: 456}
 projects:
   sat:
     tickets: {source: jira, space: SAT}
+    time: {source: toggl, spaces: [SAT]}

@@ -8,8 +8,8 @@ from cat_herder.domain.config import Config, TicketOrigin
 from cat_herder.domain.ticket import SprintState, Ticket, key_order
 from cat_herder.sources.errors import SourceUnreachable, TicketNotFound
 from cat_herder.sources.ticket_source import TicketSource
-from cat_herder.store.space_sync_repository import SpaceSyncRepository
 from cat_herder.store.ticket_repository import StoredTicket, TicketRepository
+from cat_herder.store.ticket_space_sync_repository import TicketSpaceSyncRepository
 
 _logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ CURRENT_SPRINT = 'current'
 
 
 class KeyNotResolved(Exception):
-    """The key isn't a ticket key, names no ticket source, or is in several sources. The message says which."""
+    """The key isn't a ticket key, or is in several sources. The message says which."""
 
 
 class TicketsService:
@@ -33,14 +33,14 @@ class TicketsService:
     ) -> None:
         self._config = config
         self._ticket_repository = TicketRepository(session)
-        self._space_sync_repository = SpaceSyncRepository(session)
+        self._ticket_space_sync_repository = TicketSpaceSyncRepository(session)
         self._source_by_slug = {source.slug: source for source in sources}
         self._git_repository = git_repository
 
     def show(self, key: str, force_fetch: bool = False) -> Ticket | None:
         """The ticket, or None if its source doesn't have it, which deletes the local copy.
 
-        force_fetch fetches even within the source's window.
+        A qualified key, as in jira:SAT-7, names a ticket source. force_fetch fetches even within the source's window.
 
         Raises:
             KeyNotResolved: if the key doesn't resolve to one source.
@@ -57,7 +57,7 @@ class TicketsService:
         local copy of tickets gone from the space. If a source can't be reached, its spaces log a warning.
         """
         for origin in self._origins(()):
-            self._sync_space(origin.source, origin.space, force_fetch)
+            self._sync_space(origin, force_fetch)
 
     def list_tickets(
         self,
@@ -71,7 +71,7 @@ class TicketsService:
         """The full tickets matching every filter given, sorted by key, after syncing their projects' spaces."""
         origins = self._origins(project_slugs)
         for origin in origins:
-            self._sync_space(origin.source, origin.space, force_fetch)
+            self._sync_space(origin, force_fetch)
         current = sprint_name == CURRENT_SPRINT
         tickets = self._ticket_repository.find(
             origins,
@@ -100,14 +100,12 @@ class TicketsService:
         # Returns the source and its own key.
         source, separator, unqualified = key.rpartition(':')
         if separator:
-            if source not in self._config.ticket_sources():
-                raise KeyNotResolved(f'{source} is not a ticket source: {", ".join(self._config.ticket_sources())}')
             return source, unqualified
 
         prefix, dash, number = key.rpartition('-')
         if not dash or not prefix or not number:
             raise KeyNotResolved(f'{key} is not a ticket key, such as SAT-7')
-        candidates = self._config.sources_for_key_prefix(prefix)
+        candidates = self._config.ticket_sources_for_key_prefix(prefix)
         if len(candidates) == 1:
             return candidates[0], key
 
@@ -139,10 +137,11 @@ class TicketsService:
         self._ticket_repository.save(ticket, now)
         return ticket
 
-    def _sync_space(self, source: str, space: str, force_fetch: bool) -> None:
+    def _sync_space(self, origin: TicketOrigin, force_fetch: bool) -> None:
+        source, space = origin.source, origin.space
         now = datetime.now(UTC)
         window = timedelta(seconds=self._config.source(source).fetch_window_seconds)
-        synced_at = self._space_sync_repository.get(source, space)
+        synced_at = self._ticket_space_sync_repository.get_last_sync(source, space)
         if synced_at and not force_fetch and now - synced_at < window:
             return
 
@@ -160,7 +159,7 @@ class TicketsService:
                 self._ticket_repository.delete(source, key)
         for ticket in tickets:
             self._ticket_repository.save(ticket, now)
-        self._space_sync_repository.save(source, space, now)
+        self._ticket_space_sync_repository.save(source, space, now)
 
 
 def _local_copy(source: str, key: str, stored: StoredTicket | None) -> Ticket:

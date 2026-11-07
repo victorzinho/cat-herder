@@ -37,6 +37,11 @@ class SprintRepository:
         return row
 
 
+    def exists(self, name: str) -> bool:
+        """Whether a sprint with that name is stored, in any source."""
+        return self._session.scalars(select(SprintRow.id).where(SprintRow.name == name)).first() is not None
+
+
 def sprint_to_domain(row: SprintRow) -> Sprint:
     return Sprint(
         source=row.source,
