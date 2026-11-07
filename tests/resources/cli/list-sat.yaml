@@ -26,7 +26,7 @@
   type: Sub-task
   status: Done
   assignee: null
-  points: null
+  points: 3
   estimated_hours: null
   custom_fields: {size: null, team: null}
   sprints: []

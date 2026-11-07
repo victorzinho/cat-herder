@@ -6,7 +6,7 @@ from importlib.metadata import version
 from pathlib import Path
 
 from cat_herder.cli.commands import list as list_command
-from cat_herder.cli.commands import show, sync
+from cat_herder.cli.commands import report, show, sync
 from cat_herder.cli.config import ConfigError, load_config
 from cat_herder.services.tickets_service import KeyNotResolved
 from cat_herder.sources.errors import CredentialsMissing, SourceError, SourceUnreachable
@@ -27,6 +27,9 @@ def main(argv: list[str] | None = None) -> int:
         'list',
         help='list tickets matching filters',
         description='List the tickets matching every filter, sorted by key, after syncing their projects.',
+    ))
+    report.configure(commands.add_parser(
+        'report', help='report on a project or a sprint', description='Report on a project or a sprint, as YAML.'
     ))
     show.configure(commands.add_parser('show', help='show one ticket', description='Show one ticket as YAML.'))
     sync.configure(commands.add_parser(

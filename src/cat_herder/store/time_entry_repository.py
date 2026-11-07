@@ -42,11 +42,24 @@ class TimeEntryRepository:
             self._session.merge(_row(entry))
         self._session.flush()
 
-    def find(self, origin: TimeOrigin, ticket_key: str | None = None) -> list[TimeEntry]:
-        """The entries stored in those spaces, oldest first, and only those on that ticket if one is given."""
+    def find(
+        self,
+        origin: TimeOrigin,
+        ticket_key: str | None = None,
+        start: datetime | None = None,
+        end: datetime | None = None,
+    ) -> list[TimeEntry]:
+        """The entries stored in those spaces, oldest first, that match every criterion given.
+
+        start and end bound the entry's start, start included and end not.
+        """
         query = select(TimeEntryRow).where(TimeEntryRow.source == origin.source, TimeEntryRow.space.in_(origin.spaces))
         if ticket_key:
             query = query.where(TimeEntryRow.ticket_key == ticket_key)
+        if start:
+            query = query.where(TimeEntryRow.start >= start)
+        if end:
+            query = query.where(TimeEntryRow.start < end)
         return [_entry(row) for row in self._session.scalars(query.order_by(TimeEntryRow.start))]
 
 

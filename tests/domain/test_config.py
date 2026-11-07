@@ -1,10 +1,27 @@
 from collections.abc import Callable, Iterable
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 from cat_herder.domain.config import Config, Project, SourceConfig, TicketOrigin, TimeOrigin
-from tests.factories import new_jira_source_config, new_ticket, new_time_entry, new_toggl_source_config
+from cat_herder.domain.ticket import Change
+from tests.factories import (
+    new_change,
+    new_jira_source_config,
+    new_ticket,
+    new_time_entry,
+    new_toggl_source_config,
+)
+
+
+def test_ticket_source_returns_the_ticket_source_with_that_slug() -> None:
+    # GIVEN
+    jira = new_jira_source_config(slug='jira')
+    config = _config(sources=(jira, new_toggl_source_config()))
+
+    # WHEN / THEN
+    assert config.ticket_source('jira') == jira
 
 
 def test_time_source_returns_the_time_source_with_that_slug() -> None:
@@ -27,6 +44,8 @@ def test_project_returns_the_one_with_that_slug() -> None:
 
 @pytest.mark.parametrize(('lookup', 'slug'), [
     pytest.param(Config.source, 'nope', id='source'),
+    pytest.param(Config.ticket_source, 'nope', id='ticket-source'),
+    pytest.param(Config.ticket_source, 'toggl', id='ticket-source-of-a-time-source'),
     pytest.param(Config.time_source, 'nope', id='time-source'),
     pytest.param(Config.time_source, 'jira', id='time-source-of-a-ticket-source'),
     pytest.param(Config.project, 'nope', id='project'),
@@ -34,7 +53,7 @@ def test_project_returns_the_one_with_that_slug() -> None:
 def test_lookups_raise_key_error_for_a_slug_without_one(lookup: Callable[[Config, str], object], slug: str) -> None:
     # GIVEN
     config = _config(
-        sources=(new_jira_source_config(slug='jira'),),
+        sources=(new_jira_source_config(slug='jira'), new_toggl_source_config(slug='toggl')),
         projects=(_ticket_project('sat', 'jira', 'SAT'),)
     )
 
@@ -93,6 +112,30 @@ def test_ticket_sources_for_key_prefix_returns_the_sources_it_can_come_from(
 
     # THEN
     assert sorted(sources) == sorted(expected)
+
+
+@pytest.mark.parametrize(('status', 'changes', 'expected'), [
+    pytest.param(
+        'Done',
+        (
+            new_change(field='status', before='To do', after='Done', date=datetime(2026, 10, 2, tzinfo=UTC)),
+            new_change(field='status', before='Done', after='To do', date=datetime(2026, 10, 3, tzinfo=UTC)),
+            new_change(field='status', before='To do', after='Done', date=datetime(2026, 10, 4, tzinfo=UTC)),
+        ),
+        datetime(2026, 10, 4, tzinfo=UTC),
+        id='last-change-into-a-done-status',
+    ),
+    pytest.param('Done', (), datetime(2026, 10, 1, tzinfo=UTC), id='created-without-a-change-into-one'),
+    pytest.param('To do', (), None, id='not-done'),
+])
+def test_done_date_is_when_the_ticket_was_done(
+    status: str, changes: tuple[Change, ...], expected: datetime | None
+) -> None:
+    # GIVEN
+    ticket = new_ticket(status=status, created=datetime(2026, 10, 1, tzinfo=UTC), changes=changes)
+
+    # WHEN / THEN
+    assert new_jira_source_config(done_statuses=('Done',)).done_date(ticket) == expected
 
 
 def _config(sources: Iterable[SourceConfig] = (), projects: Iterable[Project] = ()) -> Config:

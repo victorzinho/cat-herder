@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Protocol
@@ -48,6 +48,18 @@ class TicketSourceConfig(SourceConfig):
     done_statuses: tuple[str, ...]
     discarded_statuses: tuple[str, ...] = ()
     blocking_relation: str | None = None
+
+    def done_date(self, ticket: Ticket) -> datetime | None:
+        """When the ticket was done: its last Change into a done status, or its creation if there's none.
+
+        None if it isn't done.
+        """
+        if ticket.status not in self.done_statuses:
+            return None
+        into_done = [
+            change.date for change in ticket.changes if change.field == 'status' and change.after in self.done_statuses
+        ]
+        return into_done[-1] if into_done else ticket.created
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -132,6 +144,13 @@ class Config:
 
     def source(self, slug: str) -> SourceConfig:
         return _by_slug(self.sources, slug)
+
+    def ticket_source(self, slug: str) -> TicketSourceConfig:
+        """Raises KeyError if no ticket source has that slug."""
+        source = self.source(slug)
+        if not isinstance(source, TicketSourceConfig):
+            raise KeyError(slug)
+        return source
 
     def time_source(self, slug: str) -> TimeSourceConfig:
         """Raises KeyError if no time source has that slug."""

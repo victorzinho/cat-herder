@@ -21,7 +21,6 @@ _logger = logging.getLogger(__name__)
 
 # Days a sync after the window re-reads, picking up entries deleted or edited since.
 REFRESH_DAYS = 30
-SECONDS_PER_HOUR = 3600
 
 
 class TimeEntriesService:
@@ -42,9 +41,12 @@ class TimeEntriesService:
         self._ticket_space_sync_repository = TicketSpaceSyncRepository(session)
         self._source_by_slug = {source.slug: source for source in sources}
 
-    def sync(self, force_fetch: bool = False) -> None:
-        """Sync every time source. force_fetch re-reads from history_from, picking up edits older than REFRESH_DAYS."""
-        for origin in self._origins(()):
+    def sync(self, force_fetch: bool = False, project_slugs: Sequence[str] = ()) -> None:
+        """Sync the time sources of those projects, or every time source.
+
+        force_fetch re-reads from history_from, picking up edits older than REFRESH_DAYS.
+        """
+        for origin in self._origins(project_slugs):
             self._sync_source(origin, force_fetch)
 
     def spent_hours(self, ticket: Ticket) -> float | None:
@@ -55,18 +57,23 @@ class TimeEntriesService:
         project = self._config.project_of_ticket(ticket)
         if not project or not project.time:
             return None
-        [origin] = self._origins([project.time.source])
+        [origin] = self._origins([project.slug])
         self._sync_source(origin, force_fetch=False)
         if not self._time_source_sync_repository.get_last_sync(origin):
             return None
         entries = self._time_entry_repository.find(project.time, ticket_key=ticket.key)
-        return sum((entry.end - entry.start).total_seconds() for entry in entries) / SECONDS_PER_HOUR
+        return sum(entry.hours for entry in entries)
 
-    def _origins(self, source_slugs: Sequence[str]) -> list[TimeOrigin]:
-        # The time origins of every project, merged into one per source, of those sources or of every source.
+    def _origins(self, project_slugs: Sequence[str]) -> list[TimeOrigin]:
+        # The time origins of every project, merged into one per source, of those projects' sources or of every source.
+        sources = {
+            project.time.source
+            for project in self._config.projects
+            if project.time and (not project_slugs or project.slug in project_slugs)
+        }
         spaces_by_source: defaultdict[str, list[str]] = defaultdict(list)
         for project in self._config.projects:
-            if project.time and (not source_slugs or project.time.source in source_slugs):
+            if project.time and project.time.source in sources:
                 spaces_by_source[project.time.source].extend(project.time.spaces)
         return [TimeOrigin(source=source, spaces=tuple(spaces)) for source, spaces in sorted(spaces_by_source.items())]
 

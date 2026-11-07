@@ -254,6 +254,18 @@ def test_sync_after_a_first_sync_fetches_what_changed_unless_forced(
     assert bool(TicketRepository(session).get('jira', 'SAT-99')) is sat_99_kept
 
 
+def test_sync_fetches_only_the_spaces_of_the_projects_given(session: Session, jira_api: JiraApi) -> None:
+    # GIVEN sat on jira's SAT, web on jira's WEB, and sat-meteo on other's SAT
+    cut = _service(session, jira_api, TWO_JIRAS)
+
+    # WHEN
+    cut.sync(project_slugs=['sat'])
+
+    # THEN
+    assert json.loads(jira_api.requests[0].content)['jql'].startswith('project = "SAT"')
+    assert TicketSpaceSyncRepository(session).get_last_sync('jira', 'WEB') is None
+
+
 def test_sync_warns_when_a_source_is_unreachable(session: Session, jira_api: JiraApi, caplog: pytest.LogCaptureFixture):
     # GIVEN
     jira_api.reachable = False
@@ -305,9 +317,9 @@ def test_list_tickets_answers_from_the_local_copy_when_unreachable(
     assert caplog.messages == [f'jira unreachable, SAT is a local copy from {datetime.now(UTC):%Y-%m-%d}']
 
 
-def _service(session: Session, jira_api: JiraApi) -> TicketsService:
+def _service(session: Session, jira_api: JiraApi, config: Config = CONFIG) -> TicketsService:
     client = JiraClient(JIRA_CONFIG.url, lambda: ('ana@example.com', 'token'), transport=httpx.MockTransport(jira_api))
-    return TicketsService(CONFIG, session, (JiraSource(JIRA_CONFIG, client),), None)
+    return TicketsService(config, session, (JiraSource(JIRA_CONFIG, client),), None)
 
 
 def _save_in_local_copy(session: Session, ticket: Ticket, fetched_at: datetime) -> None:

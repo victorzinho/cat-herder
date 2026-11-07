@@ -50,13 +50,14 @@ class TicketsService:
         source, source_key = self._resolve(key)
         return self._read(source, source_key, force_fetch)
 
-    def sync(self, force_fetch: bool = False) -> None:
-        """Fetch the projects' spaces into the local copy: everything the first time, then what changed since.
+    def sync(self, force_fetch: bool = False, project_slugs: Sequence[str] = ()) -> None:
+        """Fetch the spaces of those projects, or of every project, into the local copy.
 
-        A space synced within its source's window is skipped. force_fetch re-reads everything, which deletes the
+        A space is read whole the first time, and then for what changed since. One synced within its source's window
+        is skipped. force_fetch re-reads everything, which deletes the
         local copy of tickets gone from the space. If a source can't be reached, its spaces log a warning.
         """
-        for origin in self._origins(()):
+        for origin in self._origins(project_slugs):
             self._sync_space(origin, force_fetch)
 
     def list_tickets(

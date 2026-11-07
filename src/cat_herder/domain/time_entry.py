@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
+SECONDS_PER_HOUR = 3600
+
 
 class TimeEntryFlag(StrEnum):
     """Why the ticket or sprint an entry referred to was dropped."""
@@ -30,3 +32,7 @@ class TimeEntry:
     ticket_key: str | None = None
     sprint: str | None = None
     flags: frozenset[TimeEntryFlag] = frozenset()
+
+    @property
+    def hours(self) -> float:
+        return (self.end - self.start).total_seconds() / SECONDS_PER_HOUR

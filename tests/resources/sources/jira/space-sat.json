@@ -407,6 +407,7 @@
         "issuelinks": [],
         "attachment": [],
         "timeoriginalestimate": null,
+        "customfield_10035": 3.0,
         "parent": {
           "id": "10007",
           "key": "SAT-7",

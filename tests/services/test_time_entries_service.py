@@ -107,6 +107,26 @@ def test_sync_replaces_the_last_30_days_or_everything_when_forced(
     assert [entry.id for entry in TimeEntryRepository(session).find(_origin(SAT_PROJECT))] == kept
 
 
+@pytest.mark.parametrize(('project_slugs', 'synced'), [
+    pytest.param(['admin'], True, id='whole-source-of-a-project'),
+    pytest.param(['web'], False, id='project-without-time'),
+])
+def test_sync_syncs_the_time_sources_of_the_projects_given_whole(
+    session: Session, toggl_api: TogglApi, project_slugs: list[str], synced: bool
+) -> None:
+    # GIVEN sat and admin on Toggl, and web with no time source
+    web = Project(slug='web', tickets=TicketOrigin(source='jira', space='WEB'), time=None)
+    config = _config()
+    cut = _service(session, toggl_api, replace(config, projects=(*config.projects, web)))
+
+    # WHEN
+    cut.sync(project_slugs=project_slugs)
+
+    # THEN
+    stored = TimeEntryRepository(session).find(_origin(SAT_PROJECT, ADMIN_PROJECT))
+    assert bool(stored) is synced
+
+
 @pytest.mark.parametrize(('entry_id', 'ticket_key', 'flags'), [
     pytest.param('9001', 'SAT-7', set[TimeEntryFlag](), id='in-project'),
     pytest.param('9003', None, set[TimeEntryFlag](), id='no-key'),

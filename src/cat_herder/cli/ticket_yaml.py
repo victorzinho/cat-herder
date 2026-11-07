@@ -2,14 +2,11 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 from typing import Any
 
-import yaml
-
+from cat_herder.cli.yaml_output import NO_TIME_SOURCE, Block, dump, hours, number
 from cat_herder.domain.config import Config
-from cat_herder.domain.ticket import Change, Comment, CustomValue, Link, Ticket, TicketSummary
+from cat_herder.domain.ticket import Change, Comment, Link, Ticket, TicketSummary
 
-NO_TIME_SOURCE = 'no time source'
 UNKNOWN_PERSON = 'unknown'
-HOURS_DECIMALS = 2
 
 
 def ticket_to_yaml(
@@ -32,10 +29,10 @@ def ticket_to_yaml(
         'type': ticket.type,
         'status': ticket.status,
         'assignee': _person(person_by_identity, ticket.assignee) if ticket.assignee else None,
-        'points': _number(ticket.points),
-        'estimated_hours': _number(ticket.estimated_hours),
-        'custom_fields': {name: _number(value) for name, value in ticket.custom_fields.items()},
-        'spent_hours': _hours(spent_hours) if project and project.time else NO_TIME_SOURCE,
+        'points': number(ticket.points),
+        'estimated_hours': number(ticket.estimated_hours),
+        'custom_fields': {name: number(value) for name, value in ticket.custom_fields.items()},
+        'spent_hours': hours(spent_hours) if project and project.time else NO_TIME_SOURCE,
         'parent': _reference(ticket.parent) if ticket.parent else None,
         'children': [_reference(child) for child in ticket.children],
         'sprints': [sprint.name for sprint in ticket.sprints],
@@ -59,40 +56,12 @@ def ticket_to_yaml(
         ]
     if changes:
         document['changes'] = [_change(person_by_identity, change) for change in ticket.changes]
-    return _dump(document)
+    return dump(document)
 
 
 def tickets_to_yaml(tickets: Iterable[Ticket], config: Config) -> str:
     """The tickets as list shows them: some of the ticket schema's fields, with the same names and rules."""
-    return _dump([_listed(config, ticket) for ticket in tickets])
-
-
-class _Dumper(yaml.SafeDumper):
-    # Indents list items under their key, as in the docs' examples.
-    def increase_indent(self, flow: bool = False, indentless: bool = False) -> None:
-        super().increase_indent(flow, False)
-
-
-class _Block(dict[str, Any]):
-    """A mapping dumped in block style, so its multi-line values can be literal blocks."""
-
-
-def _represent_str(dumper: yaml.SafeDumper, value: str) -> yaml.ScalarNode:
-    # types-PyYAML leaves represent_scalar's value untyped.
-    style = '|' if '\n' in value else None
-    return dumper.represent_scalar('tag:yaml.org,2002:str', value, style)  # pyright: ignore[reportUnknownMemberType]
-
-
-def _represent_block(dumper: yaml.SafeDumper, value: _Block) -> yaml.MappingNode:
-    return dumper.represent_mapping('tag:yaml.org,2002:map', value, flow_style=False)
-
-
-_Dumper.add_representer(str, _represent_str)
-_Dumper.add_representer(_Block, _represent_block)
-
-
-def _dump(document: object) -> str:
-    return yaml.dump(document, Dumper=_Dumper, sort_keys=False, allow_unicode=True, default_flow_style=None, width=1000)
+    return dump([_listed(config, ticket) for ticket in tickets])
 
 
 def _listed(config: Config, ticket: Ticket) -> dict[str, Any]:
@@ -104,9 +73,9 @@ def _listed(config: Config, ticket: Ticket) -> dict[str, Any]:
         'type': ticket.type,
         'status': ticket.status,
         'assignee': _person(_person_by_identity(config, ticket.source), ticket.assignee) if ticket.assignee else None,
-        'points': _number(ticket.points),
-        'estimated_hours': _number(ticket.estimated_hours),
-        'custom_fields': {name: _number(value) for name, value in ticket.custom_fields.items()},
+        'points': number(ticket.points),
+        'estimated_hours': number(ticket.estimated_hours),
+        'custom_fields': {name: number(value) for name, value in ticket.custom_fields.items()},
         'sprints': [sprint.name for sprint in ticket.sprints],
         'updated': _date(ticket.updated),
     }
@@ -131,14 +100,6 @@ def _person(person_by_identity: dict[str, str], identity: str | None) -> str:
     return person_by_identity.get(identity) or f'{UNKNOWN_PERSON} ({identity})'
 
 
-def _number(value: CustomValue) -> CustomValue | int:
-    return int(value) if isinstance(value, float) and value.is_integer() else value
-
-
-def _hours(value: float | None) -> CustomValue | int:
-    return _number(round(value, HOURS_DECIMALS)) if value is not None else None
-
-
 def _date(value: datetime) -> str:
     return value.astimezone(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')
 
@@ -159,16 +120,16 @@ def _link(ticket: Ticket, link: Link) -> dict[str, str]:
     }
 
 
-def _comment(person_by_identity: dict[str, str], comment: Comment) -> _Block:
-    return _Block(author=_person(person_by_identity, comment.author), date=_date(comment.created), body=comment.body)
+def _comment(person_by_identity: dict[str, str], comment: Comment) -> Block:
+    return Block(author=_person(person_by_identity, comment.author), date=_date(comment.created), body=comment.body)
 
 
-def _change(person_by_identity: dict[str, str], change: Change) -> _Block:
+def _change(person_by_identity: dict[str, str], change: Change) -> Block:
     before, after = change.before, change.after
     if change.field == 'assignee':
         before = _person(person_by_identity, before) if before else None
         after = _person(person_by_identity, after) if after else None
-    return _Block(
+    return Block(
         {
             'field': change.field,
             'person': _person(person_by_identity, change.author),
