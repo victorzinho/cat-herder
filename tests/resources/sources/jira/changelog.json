@@ -1,0 +1,39 @@
+{
+  "startAt": 0,
+  "maxResults": 100,
+  "total": 3,
+  "isLast": true,
+  "values": [
+    {
+      "id": "11001",
+      "author": {"accountId": "account-ana", "displayName": "Ana"},
+      "created": "2026-10-21T10:00:00.000+0200",
+      "items": [
+        {"field": "status", "fieldtype": "jira", "fieldId": "status", "from": "10000", "fromString": "To do", "to": "3", "toString": "In progress"},
+        {"field": "assignee", "fieldtype": "jira", "fieldId": "assignee", "from": null, "fromString": null, "to": "account-ana", "toString": "Ana"},
+        {"field": "Rank", "fieldtype": "custom", "fieldId": "customfield_10019", "from": "", "fromString": "", "to": "", "toString": "Ranked higher"}
+      ]
+    },
+    {
+      "id": "11002",
+      "author": {"accountId": "account-victor", "displayName": "Víctor"},
+      "created": "2026-10-22T09:30:00.000+0200",
+      "items": [
+        {"field": "timeoriginalestimate", "fieldtype": "jira", "fieldId": "timeoriginalestimate", "from": "36000", "fromString": "36000", "to": "18000", "toString": "18000"},
+        {"field": "Story Points", "fieldtype": "custom", "fieldId": "customfield_10035", "from": null, "fromString": "10", "to": null, "toString": "5"},
+        {"field": "Sprint", "fieldtype": "custom", "fieldId": "customfield_10020", "from": "", "fromString": "", "to": "42", "toString": "All Sprint 1"},
+        {"field": "Size", "fieldtype": "custom", "fieldId": "customfield_10043", "from": "10023", "fromString": "🌋", "to": "10022", "toString": "🔥"},
+        {"field": "IssueParentAssociation", "fieldtype": "jira", "from": null, "fromString": null, "to": "10002", "toString": "SAT-2"},
+        {"field": "Link", "fieldtype": "jira", "from": null, "fromString": null, "to": "SAT-9", "toString": "This work item blocks SAT-9"},
+        {"field": "WorklogId", "fieldtype": "jira", "from": null, "fromString": null, "to": "10073", "toString": "10073"}
+      ]
+    },
+    {
+      "id": "11003",
+      "created": "2026-10-23T08:00:00.000+0200",
+      "items": [
+        {"field": "summary", "fieldtype": "jira", "fieldId": "summary", "from": null, "fromString": "Retry meteo imports", "to": null, "toString": "Retry failed meteo imports"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,123 @@
+{
+  "type": "doc",
+  "version": 1,
+  "content": [
+    {"type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Context"}]},
+    {
+      "type": "paragraph",
+      "content": [
+        {"type": "text", "text": "Imports "},
+        {"type": "text", "text": "fail silently ", "marks": [{"type": "strong"}]},
+        {"type": "text", "text": "when "},
+        {"type": "text", "text": "meteo", "marks": [{"type": "em"}]},
+        {"type": "text", "text": " times out in "},
+        {"type": "text", "text": "fetch()", "marks": [{"type": "strong"}, {"type": "code"}]},
+        {"type": "text", "text": ", see "},
+        {"type": "text", "text": "the runbook", "marks": [{"type": "link", "attrs": {"href": "https://example.com/runbook"}}]},
+        {"type": "text", "text": " and "},
+        {"type": "text", "text": "the old notes", "marks": [{"type": "strike"}, {"type": "underline"}]},
+        {"type": "text", "text": "."},
+        {"type": "hardBreak"},
+        {"type": "text", "text": "Ask "},
+        {"type": "mention", "attrs": {"id": "account-ana", "text": "@Ana"}},
+        {"type": "text", "text": " "},
+        {"type": "emoji", "attrs": {"shortName": ":fire:", "text": "🔥"}},
+        {"type": "text", "text": " before "},
+        {"type": "date", "attrs": {"timestamp": "1793750400000"}},
+        {"type": "text", "text": ", now "},
+        {"type": "status", "attrs": {"text": "BLOCKED", "color": "red"}},
+        {"type": "text", "text": ": "},
+        {"type": "inlineCard", "attrs": {"url": "https://example.atlassian.net/browse/SAT-9"}}
+      ]
+    },
+    {
+      "type": "bulletList",
+      "content": [
+        {"type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Retry"}]}]},
+        {
+          "type": "listItem",
+          "content": [
+            {"type": "paragraph", "content": [{"type": "text", "text": "Alert"}]},
+            {
+              "type": "orderedList",
+              "attrs": {"order": 3},
+              "content": [
+                {"type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Slack"}]}]},
+                {"type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Mail"}]}]}
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "taskList",
+      "attrs": {"localId": "1"},
+      "content": [
+        {"type": "taskItem", "attrs": {"localId": "2", "state": "DONE"}, "content": [{"type": "text", "text": "Reproduce"}]},
+        {"type": "taskItem", "attrs": {"localId": "3", "state": "TODO"}, "content": [{"type": "text", "text": "Fix"}]},
+        {
+          "type": "taskList",
+          "attrs": {"localId": "4"},
+          "content": [
+            {"type": "taskItem", "attrs": {"localId": "5", "state": "TODO"}, "content": [{"type": "text", "text": "Test"}]}
+          ]
+        }
+      ]
+    },
+    {
+      "type": "codeBlock",
+      "attrs": {"language": "python"},
+      "content": [{"type": "text", "text": "client.get(url,\n           timeout=30)"}]
+    },
+    {
+      "type": "blockquote",
+      "content": [
+        {"type": "paragraph", "content": [{"type": "text", "text": "Provider says:"}]},
+        {"type": "paragraph", "content": [{"type": "text", "text": "it's on our side"}]}
+      ]
+    },
+    {
+      "type": "panel",
+      "attrs": {"panelType": "info"},
+      "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Retries are capped at 3."}]}]
+    },
+    {"type": "rule"},
+    {
+      "type": "table",
+      "content": [
+        {
+          "type": "tableRow",
+          "content": [
+            {"type": "tableHeader", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Provider"}]}]},
+            {"type": "tableHeader", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Timeout"}]}]}
+          ]
+        },
+        {
+          "type": "tableRow",
+          "content": [
+            {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "meteo | backup"}]}]},
+            {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "30 s"}]}]}
+          ]
+        }
+      ]
+    },
+    {
+      "type": "expand",
+      "attrs": {"title": "Logs"},
+      "content": [{"type": "paragraph", "content": [{"type": "text", "text": "See trace.log"}]}]
+    },
+    {
+      "type": "mediaSingle",
+      "attrs": {"layout": "center"},
+      "content": [{"type": "media", "attrs": {"id": "a1b2", "type": "file", "collection": ""}}]
+    },
+    {
+      "type": "layoutSection",
+      "content": [
+        {"type": "layoutColumn", "attrs": {"width": 50}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Left"}]}]},
+        {"type": "layoutColumn", "attrs": {"width": 50}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Right"}]}]}
+      ]
+    }
+  ]
+}

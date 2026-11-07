@@ -1,0 +1,13 @@
+{
+  "startAt": 0,
+  "maxResults": 1,
+  "total": 2,
+  "comments": [
+    {
+      "id": "100",
+      "author": {"accountId": "account-ana", "displayName": "Ana"},
+      "body": {"type": "doc", "version": 1, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Reproduced it with a 30 s timeout."}]}]},
+      "created": "2026-10-20T13:00:00.000+0200"
+    }
+  ]
+}

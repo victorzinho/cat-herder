@@ -1,0 +1,87 @@
+{
+  "id": "10007",
+  "key": "SAT-7",
+  "fields": {
+    "summary": "Retry failed meteo imports",
+    "status": {"id": "3", "name": "In progress"},
+    "issuetype": {"id": "10006", "name": "Task", "subtask": false},
+    "project": {"id": "10002", "key": "SAT", "name": "Satellite"},
+    "created": "2026-10-12T11:30:00.000+0200",
+    "updated": "2026-10-28T17:05:00.000+0100",
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {"type": "text", "text": "The import fails "},
+            {"type": "text", "text": "silently", "marks": [{"type": "strong"}]},
+            {"type": "text", "text": " when the provider times out."}
+          ]
+        }
+      ]
+    },
+    "labels": ["backend"],
+    "components": [{"id": "10007", "name": "import"}],
+    "assignee": {"accountId": "account-ana", "displayName": "Ana", "active": true},
+    "parent": {
+      "id": "10002",
+      "key": "SAT-2",
+      "fields": {"summary": "Meteo pipeline", "status": {"name": "In progress"}, "issuetype": {"name": "Epic"}}
+    },
+    "issuelinks": [
+      {
+        "id": "10061",
+        "type": {"id": "10000", "name": "Blocks", "inward": "is blocked by", "outward": "blocks"},
+        "outwardIssue": {
+          "id": "10009",
+          "key": "SAT-9",
+          "fields": {"summary": "Publish meteo layer", "status": {"name": "To do"}, "issuetype": {"name": "Task"}}
+        }
+      },
+      {
+        "id": "10062",
+        "type": {"id": "10000", "name": "Blocks", "inward": "is blocked by", "outward": "blocks"},
+        "inwardIssue": {
+          "id": "10004",
+          "key": "SAT-4",
+          "fields": {"summary": "Rotate API keys", "status": {"name": "Resolved"}, "issuetype": {"name": "Task"}}
+        }
+      }
+    ],
+    "attachment": [
+      {
+        "id": "501",
+        "filename": "trace.log",
+        "size": 48213,
+        "created": "2026-10-20T13:02:00.000+0200",
+        "author": {"accountId": "account-ana"}
+      }
+    ],
+    "timeoriginalestimate": 18000,
+    "customfield_10035": 5.0,
+    "customfield_10020": [
+      {
+        "id": 42,
+        "name": "All Sprint 1",
+        "state": "closed",
+        "boardId": 7,
+        "startDate": "2026-10-20T08:00:00.000Z",
+        "endDate": "2026-11-03T12:00:00.000Z",
+        "completeDate": "2026-11-03T15:00:00.000Z"
+      },
+      {
+        "id": 43,
+        "name": "All Sprint 2",
+        "state": "active",
+        "boardId": 7,
+        "startDate": "2026-11-03T16:00:00.000Z",
+        "endDate": "2026-11-17T12:00:00.000Z"
+      }
+    ],
+    "customfield_10043": {"id": "10022", "value": "🔥"},
+    "customfield_10044": "meteo-team",
+    "customfield_10050": [{"id": "10030", "value": "api"}, {"id": "10031", "value": "batch"}]
+  }
+}

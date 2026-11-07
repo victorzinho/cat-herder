@@ -1,0 +1,7 @@
+{
+  "issues": [
+    {"id": "10008", "key": "SAT-8", "fields": {"summary": "Add import metrics", "status": {"name": "To do"}, "issuetype": {"name": "Task"}}}
+  ],
+  "nextPageToken": "page-2",
+  "isLast": false
+}
