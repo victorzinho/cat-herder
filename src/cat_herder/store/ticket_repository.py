@@ -152,6 +152,11 @@ class TicketRepository:
             self._session.delete(row)
             self._session.flush()
 
+    def keys_in_space(self, source: str, space: str) -> set[str]:
+        """Keys of the full tickets stored for that space. Partial ones don't know their space."""
+        keys = select(TicketRow.key).where(TicketRow.source == source, TicketRow.space == space)
+        return set(self._session.scalars(keys))
+
     def _row(self, source: str, key: str) -> TicketRow | None:
         return self._session.scalars(select(TicketRow).where(TicketRow.source == source, TicketRow.key == key)).first()
 

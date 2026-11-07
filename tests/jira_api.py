@@ -14,8 +14,11 @@ JIRA_CONFIG = new_jira_source_config(
 )
 
 
-def jira_api_with_sat_7(request: httpx.Request) -> httpx.Response:
-    """Jira's REST API with SAT-7 only: its comments and children in two pages each, and its changelog."""
+def jira_api_with_sat(request: httpx.Request) -> httpx.Response:
+    """Jira's REST API with SAT-7, its comments and children in two pages each, and its changelog.
+
+    Searching the SAT space finds SAT-7, with one of its two comments, and its child SAT-8.
+    """
     match request.method, request.url.path.removeprefix('/rest/api/3/'):
         case 'GET', 'issue/SAT-7':
             resource = 'issue.json'
@@ -24,8 +27,13 @@ def jira_api_with_sat_7(request: httpx.Request) -> httpx.Response:
         case 'GET', 'issue/SAT-7/changelog':
             resource = 'changelog.json'
         case 'POST', 'search/jql':
-            page = 2 if 'nextPageToken' in json.loads(request.content) else 1
-            resource = f'children-page-{page}.json'
+            body = json.loads(request.content)
+            if body['jql'].startswith('project = "SAT"'):
+                resource = 'space-sat.json'
+            elif body['jql'].startswith('parent in ('):
+                resource = 'space-sat-children.json'
+            else:
+                resource = f'children-page-{2 if "nextPageToken" in body else 1}.json'
         case _:
             return httpx.Response(404, json={'errorMessages': ['Issue does not exist'], 'errors': {}})
     return httpx.Response(200, json=json.loads((RESOURCES / resource).read_text()))
@@ -42,4 +50,4 @@ class JiraApi:
         self.requests.append(request)
         if not self.reachable:
             raise httpx.ConnectError('Failed', request=request)
-        return jira_api_with_sat_7(request)
+        return jira_api_with_sat(request)

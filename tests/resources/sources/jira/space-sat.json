@@ -1,0 +1,439 @@
+{
+  "issues": [
+    {
+      "id": "10007",
+      "key": "SAT-7",
+      "fields": {
+        "summary": "Retry failed meteo imports",
+        "status": {
+          "id": "3",
+          "name": "In progress"
+        },
+        "issuetype": {
+          "id": "10006",
+          "name": "Task",
+          "subtask": false
+        },
+        "project": {
+          "id": "10002",
+          "key": "SAT",
+          "name": "Satellite"
+        },
+        "created": "2026-10-12T11:30:00.000+0200",
+        "updated": "2026-10-28T17:05:00.000+0100",
+        "description": {
+          "type": "doc",
+          "version": 1,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "The import fails "
+                },
+                {
+                  "type": "text",
+                  "text": "silently",
+                  "marks": [
+                    {
+                      "type": "strong"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " when the provider times out."
+                }
+              ]
+            }
+          ]
+        },
+        "labels": [
+          "backend"
+        ],
+        "components": [
+          {
+            "id": "10007",
+            "name": "import"
+          }
+        ],
+        "assignee": {
+          "accountId": "account-ana",
+          "displayName": "Ana",
+          "active": true
+        },
+        "parent": {
+          "id": "10002",
+          "key": "SAT-2",
+          "fields": {
+            "summary": "Meteo pipeline",
+            "status": {
+              "name": "In progress"
+            },
+            "issuetype": {
+              "name": "Epic"
+            }
+          }
+        },
+        "issuelinks": [
+          {
+            "id": "10061",
+            "type": {
+              "id": "10000",
+              "name": "Blocks",
+              "inward": "is blocked by",
+              "outward": "blocks"
+            },
+            "outwardIssue": {
+              "id": "10009",
+              "key": "SAT-9",
+              "fields": {
+                "summary": "Publish meteo layer",
+                "status": {
+                  "name": "To do"
+                },
+                "issuetype": {
+                  "name": "Task"
+                }
+              }
+            }
+          },
+          {
+            "id": "10062",
+            "type": {
+              "id": "10000",
+              "name": "Blocks",
+              "inward": "is blocked by",
+              "outward": "blocks"
+            },
+            "inwardIssue": {
+              "id": "10004",
+              "key": "SAT-4",
+              "fields": {
+                "summary": "Rotate API keys",
+                "status": {
+                  "name": "Resolved"
+                },
+                "issuetype": {
+                  "name": "Task"
+                }
+              }
+            }
+          }
+        ],
+        "attachment": [
+          {
+            "id": "501",
+            "filename": "trace.log",
+            "size": 48213,
+            "created": "2026-10-20T13:02:00.000+0200",
+            "author": {
+              "accountId": "account-ana"
+            }
+          }
+        ],
+        "timeoriginalestimate": 18000,
+        "customfield_10035": 5.0,
+        "customfield_10020": [
+          {
+            "id": 42,
+            "name": "All Sprint 1",
+            "state": "closed",
+            "boardId": 7,
+            "startDate": "2026-10-20T08:00:00.000Z",
+            "endDate": "2026-11-03T12:00:00.000Z",
+            "completeDate": "2026-11-03T15:00:00.000Z"
+          },
+          {
+            "id": 43,
+            "name": "All Sprint 2",
+            "state": "active",
+            "boardId": 7,
+            "startDate": "2026-11-03T16:00:00.000Z",
+            "endDate": "2026-11-17T12:00:00.000Z"
+          }
+        ],
+        "customfield_10043": {
+          "id": "10022",
+          "value": "🔥"
+        },
+        "customfield_10044": "meteo-team",
+        "customfield_10050": [
+          {
+            "id": "10030",
+            "value": "api"
+          },
+          {
+            "id": "10031",
+            "value": "batch"
+          }
+        ],
+        "comment": {
+          "startAt": 0,
+          "maxResults": 1,
+          "total": 2,
+          "comments": [
+            {
+              "id": "100",
+              "author": {
+                "accountId": "account-ana",
+                "displayName": "Ana"
+              },
+              "body": {
+                "type": "doc",
+                "version": 1,
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Reproduced it with a 30 s timeout."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "created": "2026-10-20T13:00:00.000+0200"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "startAt": 0,
+        "maxResults": 3,
+        "total": 3,
+        "histories": [
+          {
+            "id": "11001",
+            "author": {
+              "accountId": "account-ana",
+              "displayName": "Ana"
+            },
+            "created": "2026-10-21T10:00:00.000+0200",
+            "items": [
+              {
+                "field": "status",
+                "fieldtype": "jira",
+                "fieldId": "status",
+                "from": "10000",
+                "fromString": "To do",
+                "to": "3",
+                "toString": "In progress"
+              },
+              {
+                "field": "assignee",
+                "fieldtype": "jira",
+                "fieldId": "assignee",
+                "from": null,
+                "fromString": null,
+                "to": "account-ana",
+                "toString": "Ana"
+              },
+              {
+                "field": "Rank",
+                "fieldtype": "custom",
+                "fieldId": "customfield_10019",
+                "from": "",
+                "fromString": "",
+                "to": "",
+                "toString": "Ranked higher"
+              }
+            ]
+          },
+          {
+            "id": "11002",
+            "author": {
+              "accountId": "account-victor",
+              "displayName": "Víctor"
+            },
+            "created": "2026-10-22T09:30:00.000+0200",
+            "items": [
+              {
+                "field": "timeoriginalestimate",
+                "fieldtype": "jira",
+                "fieldId": "timeoriginalestimate",
+                "from": "36000",
+                "fromString": "36000",
+                "to": "18000",
+                "toString": "18000"
+              },
+              {
+                "field": "Story Points",
+                "fieldtype": "custom",
+                "fieldId": "customfield_10035",
+                "from": null,
+                "fromString": "10",
+                "to": null,
+                "toString": "5"
+              },
+              {
+                "field": "Sprint",
+                "fieldtype": "custom",
+                "fieldId": "customfield_10020",
+                "from": "",
+                "fromString": "",
+                "to": "42",
+                "toString": "All Sprint 1"
+              },
+              {
+                "field": "Size",
+                "fieldtype": "custom",
+                "fieldId": "customfield_10043",
+                "from": "10023",
+                "fromString": "🌋",
+                "to": "10022",
+                "toString": "🔥"
+              },
+              {
+                "field": "IssueParentAssociation",
+                "fieldtype": "jira",
+                "from": null,
+                "fromString": null,
+                "to": "10002",
+                "toString": "SAT-2"
+              },
+              {
+                "field": "Link",
+                "fieldtype": "jira",
+                "from": null,
+                "fromString": null,
+                "to": "SAT-9",
+                "toString": "This work item blocks SAT-9"
+              },
+              {
+                "field": "WorklogId",
+                "fieldtype": "jira",
+                "from": null,
+                "fromString": null,
+                "to": "10073",
+                "toString": "10073"
+              }
+            ]
+          },
+          {
+            "id": "11003",
+            "created": "2026-10-23T08:00:00.000+0200",
+            "items": [
+              {
+                "field": "summary",
+                "fieldtype": "jira",
+                "fieldId": "summary",
+                "from": null,
+                "fromString": "Retry meteo imports",
+                "to": null,
+                "toString": "Retry failed meteo imports"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "10008",
+      "key": "SAT-8",
+      "fields": {
+        "summary": "Add import metrics",
+        "status": {
+          "name": "To do"
+        },
+        "issuetype": {
+          "name": "Task"
+        },
+        "project": {
+          "id": "10002",
+          "key": "SAT",
+          "name": "Satellite"
+        },
+        "created": "2026-10-14T10:00:00.000+0200",
+        "updated": "2026-10-29T09:00:00.000+0100",
+        "description": null,
+        "labels": [],
+        "components": [],
+        "assignee": null,
+        "issuelinks": [],
+        "attachment": [],
+        "timeoriginalestimate": null,
+        "parent": {
+          "id": "10007",
+          "key": "SAT-7",
+          "fields": {
+            "summary": "Retry failed meteo imports",
+            "status": {
+              "name": "In progress"
+            },
+            "issuetype": {
+              "name": "Task"
+            }
+          }
+        },
+        "comment": {
+          "startAt": 0,
+          "maxResults": 0,
+          "total": 0,
+          "comments": []
+        }
+      },
+      "changelog": {
+        "startAt": 0,
+        "maxResults": 0,
+        "total": 0,
+        "histories": []
+      }
+    },
+    {
+      "id": "10010",
+      "key": "SAT-10",
+      "fields": {
+        "summary": "Alert on failed imports",
+        "status": {
+          "name": "Done"
+        },
+        "issuetype": {
+          "name": "Sub-task"
+        },
+        "project": {
+          "id": "10002",
+          "key": "SAT",
+          "name": "Satellite"
+        },
+        "created": "2026-10-15T10:00:00.000+0200",
+        "updated": "2026-10-30T09:00:00.000+0100",
+        "description": null,
+        "labels": [],
+        "components": [],
+        "assignee": null,
+        "issuelinks": [],
+        "attachment": [],
+        "timeoriginalestimate": null,
+        "parent": {
+          "id": "10007",
+          "key": "SAT-7",
+          "fields": {
+            "summary": "Retry failed meteo imports",
+            "status": {
+              "name": "In progress"
+            },
+            "issuetype": {
+              "name": "Task"
+            }
+          }
+        },
+        "comment": {
+          "startAt": 0,
+          "maxResults": 0,
+          "total": 0,
+          "comments": []
+        }
+      },
+      "changelog": {
+        "startAt": 0,
+        "maxResults": 0,
+        "total": 0,
+        "histories": []
+      }
+    }
+  ],
+  "isLast": true
+}

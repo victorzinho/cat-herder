@@ -5,7 +5,7 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
-from cat_herder.cli.commands import show
+from cat_herder.cli.commands import show, sync
 from cat_herder.cli.config import ConfigError, load_config
 from cat_herder.services.tickets_service import KeyNotResolved
 from cat_herder.sources.errors import CredentialsMissing, SourceError, SourceUnreachable
@@ -23,6 +23,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--version', action='version', version=f'%(prog)s {version("cat-herder")}')
     commands = parser.add_subparsers(title='commands', dest='command')
     show.configure(commands.add_parser('show', help='show one ticket', description='Show one ticket as YAML.'))
+    sync.configure(commands.add_parser(
+        'sync',
+        help='bring the configured spaces into the local copy',
+        description='Bring the configured spaces into the local copy, fetching what changed since the last sync.',
+    ))
     args = parser.parse_args(argv)
     if not args.command:
         parser.print_help()

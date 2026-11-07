@@ -8,6 +8,7 @@ from cat_herder.domain.config import Config
 from cat_herder.domain.ticket import Ticket
 from cat_herder.sources.errors import SourceUnreachable, TicketNotFound
 from cat_herder.sources.ticket_source import TicketSource
+from cat_herder.store.space_sync_repository import SpaceSyncRepository
 from cat_herder.store.ticket_repository import StoredTicket, TicketRepository
 
 _logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ class TicketsService:
     ) -> None:
         self._config = config
         self._ticket_repository = TicketRepository(session)
+        self._space_sync_repository = SpaceSyncRepository(session)
         self._source_by_slug = {source.slug: source for source in sources}
         self._git_repository = git_repository
 
@@ -44,6 +46,16 @@ class TicketsService:
         """
         source, source_key = self._resolve(key)
         return self._read(source, source_key, force_fetch)
+
+    def sync(self, force_fetch: bool = False) -> None:
+        """Fetch the projects' spaces into the local copy: everything the first time, then what changed since.
+
+        A space synced within its source's window is skipped. force_fetch re-reads everything, which deletes the
+        local copy of tickets gone from the space. If a source can't be reached, its spaces log a warning.
+        """
+        origins = {project.tickets for project in self._config.projects if project.tickets}
+        for origin in sorted(origins, key=lambda origin: (origin.source, origin.space)):
+            self._sync_space(origin.source, origin.space, force_fetch)
 
     def _resolve(self, key: str) -> tuple[str, str]:
         # Returns the source and its own key.
@@ -87,6 +99,30 @@ class TicketsService:
 
         self._ticket_repository.save(ticket, now)
         return ticket
+
+    def _sync_space(self, source: str, space: str, force_fetch: bool) -> None:
+        now = datetime.now(UTC)
+        window = timedelta(seconds=self._config.source(source).fetch_window_seconds)
+        synced_at = self._space_sync_repository.get(source, space)
+        if synced_at and not force_fetch and now - synced_at < window:
+            return
+
+        updated_since = None if force_fetch else synced_at
+        try:
+            tickets = self._source_by_slug[source].fetch_tickets(space, updated_since)
+        except SourceUnreachable:
+            local_copy = f'is a local copy from {synced_at:%Y-%m-%d}' if synced_at else 'was never synced'
+            _logger.warning('%s unreachable, %s %s', source, space, local_copy)
+            return
+
+        if not updated_since:
+            # A full read finds every ticket in the space, so the stored ones it doesn't find are gone.
+            for key in self._ticket_repository.keys_in_space(source, space) - {ticket.key for ticket in tickets}:
+                self._ticket_repository.delete(source, key)
+        for ticket in tickets:
+            self._ticket_repository.save(ticket, now)
+        self._space_sync_repository.save(source, space, now)
+
 
 def _local_copy(source: str, key: str, stored: StoredTicket | None) -> Ticket:
     if not stored:

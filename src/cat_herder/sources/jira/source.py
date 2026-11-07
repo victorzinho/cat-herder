@@ -1,3 +1,6 @@
+import math
+from collections import defaultdict
+from datetime import UTC, datetime
 from urllib.parse import quote
 
 from cat_herder.domain.config import JiraSourceConfig
@@ -38,6 +41,44 @@ class JiraSource:
             children=self._search(f'parent = "{current_key}" ORDER BY key', mapping.SUMMARY_FIELDS),
         )
 
+    def fetch_tickets(self, space: str, updated_since: datetime | None) -> list[Ticket]:
+        """See TicketSource.fetch_tickets. Comments and Changes come with the search, unless there are too many."""
+        jql = f'project = "{space}"'
+        if updated_since:
+            # JQL reads absolute dates in the Jira user's time zone, and a relative one in minutes doesn't depend on it.
+            minutes = math.ceil((datetime.now(UTC) - updated_since).total_seconds() / 60) + 1
+            jql += f' AND updated >= -{minutes}m'
+        fields = (*mapping.ticket_fields(self._config), 'comment')
+        issues = self._search(f'{jql} ORDER BY key', fields, expand='changelog')
+        children = self._children([issue['key'] for issue in issues])
+        return [mapping.ticket(
+            self._config,
+            issue,
+            comments=self._comments(issue),
+            histories=self._histories(issue),
+            children=children[issue['key']],
+        ) for issue in issues]
+
+    def _comments(self, issue: JsonObject) -> list[JsonObject]:
+        comment: JsonObject = issue['fields']['comment']
+        if comment['total'] > len(comment['comments']):
+            return self._pages(f'issue/{issue["key"]}/comment', 'comments', {'orderBy': 'created'})
+        return comment['comments']
+
+    def _histories(self, issue: JsonObject) -> list[JsonObject]:
+        changelog: JsonObject = issue['changelog']
+        if changelog['total'] > len(changelog['histories']):
+            return self._pages(f'issue/{issue["key"]}/changelog', 'values')
+        return changelog['histories']
+
+    def _children(self, keys: list[str]) -> defaultdict[str, list[JsonObject]]:
+        children: defaultdict[str, list[JsonObject]] = defaultdict(list)
+        for start in range(0, len(keys), PAGE_SIZE):
+            parents = ', '.join(f'"{key}"' for key in keys[start : start + PAGE_SIZE])
+            for child in self._search(f'parent in ({parents}) ORDER BY key', (*mapping.SUMMARY_FIELDS, 'parent')):
+                children[child['fields']['parent']['key']].append(child)
+        return children
+
     def _pages(self, path: str, items_key: str, params: dict[str, str | int] | None = None) -> list[JsonObject]:
         items: list[JsonObject] = []
         while True:
@@ -46,9 +87,11 @@ class JiraSource:
             if not page[items_key] or len(items) >= page['total']:
                 return items
 
-    def _search(self, jql: str, fields: tuple[str, ...]) -> list[JsonObject]:
+    def _search(self, jql: str, fields: tuple[str, ...], expand: str | None = None) -> list[JsonObject]:
         issues: list[JsonObject] = []
         body: JsonObject = {'jql': jql, 'fields': list(fields), 'maxResults': PAGE_SIZE}
+        if expand:
+            body['expand'] = expand
         while True:
             page = self._client.post('search/jql', body)
             issues.extend(page['issues'])

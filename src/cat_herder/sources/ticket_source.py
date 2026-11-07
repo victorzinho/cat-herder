@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Protocol
 
 from cat_herder.domain.ticket import Ticket
@@ -18,5 +19,14 @@ class TicketSource(Protocol):
             SourceUnreachable: if the source can't be reached.
             TicketNotFound: if the source has no ticket with that key.
             SourceError: if the source answers with any other error.
+        """
+        ...
+
+    def fetch_tickets(self, space: str, updated_since: datetime | None) -> list[Ticket]:
+        """Fetch the space's tickets updated since then, or all of them, each as fetch_ticket would.
+
+        Raises:
+            SourceUnreachable: if the source can't be reached.
+            SourceError: if the source answers with an error.
         """
         ...

@@ -1,3 +1,4 @@
+import json
 from collections.abc import Generator
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -14,6 +15,7 @@ from cat_herder.sources.errors import SourceUnreachable
 from cat_herder.sources.jira.client import JiraClient
 from cat_herder.sources.jira.source import JiraSource
 from cat_herder.store.database import database_session, open_database
+from cat_herder.store.space_sync_repository import SpaceSyncRepository
 from cat_herder.store.ticket_repository import TicketRepository
 from tests.factories import new_ticket, new_toggl_source_config
 from tests.jira_api import JIRA_CONFIG, JiraApi
@@ -187,6 +189,73 @@ def test_show_gives_a_prefix_in_no_project_to_the_only_ticket_source(session: Se
 
     # THEN
     assert ticket == new_ticket(key='OPS-1', space='OPS')
+
+
+def test_sync_stores_the_tickets_of_the_projects_spaces(session: Session, jira_api: JiraApi) -> None:
+    # GIVEN the sat project, on the SAT space
+    cut = _service(session, jira_api)
+
+    # WHEN
+    cut.sync()
+
+    # THEN
+    sat_7 = TicketRepository(session).get('jira', 'SAT-7')
+    sat_8 = TicketRepository(session).get('jira', 'SAT-8')
+    assert sat_7 and sat_8
+    assert [child.key for child in sat_7.ticket.children] == ['SAT-8', 'SAT-10']
+    assert abs(sat_8.fetched_at - datetime.now(UTC)) < timedelta(seconds=1)
+
+
+@pytest.mark.parametrize(('synced_ago', 'force_fetch', 'fetches'), [
+    pytest.param(WINDOW / 2, False, False, id='within-window'),
+    pytest.param(WINDOW * 2, False, True, id='after-window'),
+    pytest.param(WINDOW / 2, True, True, id='forced-within-window'),
+])
+def test_sync_fetches_a_space_only_after_the_window_or_when_forced(
+    session: Session, jira_api: JiraApi, synced_ago: timedelta, force_fetch: bool, fetches: bool
+) -> None:
+    # GIVEN SAT synced synced_ago
+    SpaceSyncRepository(session).save('jira', 'SAT', datetime.now(UTC) - synced_ago)
+    cut = _service(session, jira_api)
+
+    # WHEN
+    cut.sync(force_fetch=force_fetch)
+
+    # THEN
+    assert bool(jira_api.requests) is fetches
+
+
+@pytest.mark.parametrize(('force_fetch', 'asks_since_last_sync', 'sat_99_kept'), [
+    pytest.param(False, True, True, id='changes-since-last-sync'),
+    pytest.param(True, False, False, id='forced-rereads-everything'),
+])
+def test_sync_after_a_first_sync_fetches_what_changed_unless_forced(
+    session: Session, jira_api: JiraApi, force_fetch: bool, asks_since_last_sync: bool, sat_99_kept: bool
+) -> None:
+    # GIVEN SAT synced long ago, with SAT-99 stored, which Jira no longer has
+    long_ago = datetime.now(UTC) - WINDOW * 2
+    SpaceSyncRepository(session).save('jira', 'SAT', long_ago)
+    _save_in_local_copy(session, new_ticket(key='SAT-99', space='SAT'), long_ago)
+    cut = _service(session, jira_api)
+
+    # WHEN
+    cut.sync(force_fetch=force_fetch)
+
+    # THEN
+    assert ('updated >=' in json.loads(jira_api.requests[0].content)['jql']) is asks_since_last_sync
+    assert bool(TicketRepository(session).get('jira', 'SAT-99')) is sat_99_kept
+
+
+def test_sync_warns_when_a_source_is_unreachable(session: Session, jira_api: JiraApi, caplog: pytest.LogCaptureFixture):
+    # GIVEN
+    jira_api.reachable = False
+    cut = _service(session, jira_api)
+
+    # WHEN
+    cut.sync()
+
+    # THEN
+    assert caplog.messages == ['jira unreachable, SAT was never synced']
 
 
 def _service(session: Session, jira_api: JiraApi) -> TicketsService:

@@ -1,6 +1,8 @@
+import json
+import re
 from collections.abc import Callable
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -20,7 +22,7 @@ from cat_herder.sources.jira.client import JiraClient
 from cat_herder.sources.jira.source import JiraSource
 from cat_herder.sources.ticket_source import TicketSource
 from tests.factories import new_change
-from tests.jira_api import JIRA_CONFIG, jira_api_with_sat_7
+from tests.jira_api import JIRA_CONFIG, JiraApi, jira_api_with_sat
 
 ANA_EDIT = datetime(2026, 10, 21, 8, tzinfo=UTC)
 VICTOR_EDIT = datetime(2026, 10, 22, 7, 30, tzinfo=UTC)
@@ -29,10 +31,10 @@ AUTOMATION_EDIT = datetime(2026, 10, 23, 6, tzinfo=UTC)
 
 def test_fetch_ticket_maps_the_issue_with_every_page_of_what_it_mentions() -> None:
     # GIVEN Jira answers with SAT-7, its comments and children in two pages each, and its changelog
-    source = _source(jira_api_with_sat_7)
+    cut = _source(jira_api_with_sat)
 
     # WHEN
-    ticket = source.fetch_ticket('SAT-7')
+    ticket = cut.fetch_ticket('SAT-7')
 
     # THEN
     assert ticket == Ticket(
@@ -154,11 +156,11 @@ def test_fetch_ticket_raises_source_exceptions(
     jira_api: Callable[[httpx.Request], httpx.Response], expected_error: type[Exception]
 ) -> None:
     # GIVEN
-    source = _source(jira_api)
+    cut = _source(jira_api)
 
     # WHEN
     with pytest.raises(Exception) as raised:
-        source.fetch_ticket('SAT-7')
+        cut.fetch_ticket('SAT-7')
 
     # THEN
     assert raised.type is expected_error
@@ -166,11 +168,39 @@ def test_fetch_ticket_raises_source_exceptions(
 
 def test_fetch_ticket_raises_for_a_custom_field_with_several_values() -> None:
     # GIVEN a custom field configured on Jira's multi-select customfield_10050
-    source = _source(jira_api_with_sat_7, replace(JIRA_CONFIG, custom_fields={'channels': 'customfield_10050'}))
+    cut = _source(jira_api_with_sat, replace(JIRA_CONFIG, custom_fields={'channels': 'customfield_10050'}))
 
     # WHEN / THEN
     with pytest.raises(SourceError, match='Custom field channels holds'):
-        source.fetch_ticket('SAT-7')
+        cut.fetch_ticket('SAT-7')
+
+
+def test_fetch_tickets_maps_the_spaces_tickets_as_fetch_ticket_does() -> None:
+    # GIVEN the SAT space, with SAT-7 and its children SAT-8 and SAT-10, and SAT-7 fetched alone
+    cut = _source(jira_api_with_sat)
+    sat_7 = cut.fetch_ticket('SAT-7')
+
+    # WHEN
+    tickets = cut.fetch_tickets('SAT', None)
+
+    # THEN
+    assert [ticket.key for ticket in tickets] == ['SAT-7', 'SAT-8', 'SAT-10']
+    assert tickets[0] == sat_7
+    assert [ticket.parent.key if ticket.parent else None for ticket in tickets] == ['SAT-2', 'SAT-7', 'SAT-7']
+
+
+def test_fetch_tickets_asks_only_for_tickets_updated_since() -> None:
+    # GIVEN a last sync ten minutes ago
+    jira_api = JiraApi()
+    cut = _source(jira_api)
+    updated_since = datetime.now(UTC) - timedelta(minutes=10)
+
+    # WHEN
+    cut.fetch_tickets('SAT', updated_since)
+
+    # THEN a minute of margin, and possibly another one passing during the test
+    jql = json.loads(jira_api.requests[0].content)['jql']
+    assert re.fullmatch(r'project = "SAT" AND updated >= -1[12]m ORDER BY key', jql)
 
 
 def _source(
