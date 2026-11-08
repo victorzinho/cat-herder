@@ -5,7 +5,7 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
-from cat_herder.cli.commands import comment, edit, report, show, sync
+from cat_herder.cli.commands import comment, create, edit, report, show, sync
 from cat_herder.cli.commands import list as list_command
 from cat_herder.cli.config import load_config
 
@@ -23,6 +23,11 @@ def main(argv: list[str] | None = None) -> int:
     commands = parser.add_subparsers(title='commands', dest='command')
     comment.configure(commands.add_parser(
         'comment', help='add a comment to a ticket', description='Add a comment, in markdown, to a ticket.'
+    ))
+    create.configure(commands.add_parser(
+        'create',
+        help='create a ticket from YAML',
+        description='Create a ticket from YAML in the shape show prints, and print its key.',
     ))
     edit.configure(commands.add_parser(
         'edit',

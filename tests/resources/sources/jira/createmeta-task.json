@@ -1,0 +1,27 @@
+{
+  "startAt": 0,
+  "maxResults": 100,
+  "total": 2,
+  "fields": [
+    {
+      "fieldId": "customfield_10043",
+      "schema": {
+        "type": "option"
+      },
+      "allowedValues": [
+        {
+          "value": "🔥"
+        },
+        {
+          "value": "🕯️"
+        }
+      ]
+    },
+    {
+      "fieldId": "customfield_10044",
+      "schema": {
+        "type": "string"
+      }
+    }
+  ]
+}

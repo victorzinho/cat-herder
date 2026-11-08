@@ -110,6 +110,21 @@ class TicketsService:
         """
         return self._resolve(key)[0]
 
+    def create(self, ticket: Ticket) -> str:
+        """Create the ticket in its source, as TicketSource.create_ticket does, and return its key.
+
+        The new ticket is then stored as the source has it, as far as the source can be reached.
+
+        Raises:
+            SourceUnreachable: if the source can't be reached before creating it.
+            WriteIncomplete: if the source fails once it's created.
+            SourceError: if the source doesn't take a value, or answers with any other error.
+        """
+        key = self._source_by_slug[ticket.source].create_ticket(ticket)
+        with suppress(SourceError, SourceUnreachable):
+            self._fetch(ticket.source, key)
+        return key
+
     def edit(self, edited: Ticket) -> None:
         """Write the edited ticket to its source, which writes only what differs from what it has.
 

@@ -1,0 +1,15 @@
+{
+  "startAt": 0,
+  "maxResults": 100,
+  "total": 2,
+  "issueTypes": [
+    {
+      "id": "10006",
+      "name": "Task"
+    },
+    {
+      "id": "10008",
+      "name": "Bug"
+    }
+  ]
+}

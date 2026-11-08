@@ -31,6 +31,20 @@ class TicketSource(Protocol):
         """
         ...
 
+    def create_ticket(self, ticket: Ticket) -> str:
+        """Create the ticket in its space, and return its key.
+
+        Its key only stands for it in its links. The source sets its key and dates, its status when empty, and any
+        field left empty, and ignores the rest of what a ticket YAML can't write. Values the source doesn't take are
+        found before creating it, except a status no transition leads to.
+
+        Raises:
+            SourceUnreachable: if the source can't be reached before creating it.
+            WriteIncomplete: if a call fails once it's created.
+            SourceError: if the source doesn't take a value, or answers with any other error.
+        """
+        ...
+
     def update_ticket(self, edited: Ticket) -> None:
         """Write what differs between the edited ticket and the ticket as the source has it now.
 

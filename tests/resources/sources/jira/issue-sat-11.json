@@ -1,0 +1,36 @@
+{
+  "id": "10011",
+  "key": "SAT-11",
+  "fields": {
+    "summary": "Alert on retries",
+    "status": {
+      "id": "3",
+      "name": "To do"
+    },
+    "issuetype": {
+      "id": "10006",
+      "name": "Task",
+      "subtask": false
+    },
+    "project": {
+      "id": "10002",
+      "key": "SAT",
+      "name": "Satellite"
+    },
+    "created": "2026-11-08T10:00:00.000+0000",
+    "updated": "2026-11-08T10:00:00.000+0000",
+    "description": null,
+    "labels": [],
+    "components": [],
+    "assignee": null,
+    "parent": null,
+    "issuelinks": [],
+    "attachment": [],
+    "timeoriginalestimate": null,
+    "customfield_10035": null,
+    "customfield_10020": null,
+    "customfield_10043": null,
+    "customfield_10044": null,
+    "customfield_10050": null
+  }
+}

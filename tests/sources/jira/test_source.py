@@ -206,6 +206,92 @@ def test_fetch_tickets_asks_only_for_tickets_updated_since() -> None:
     assert re.fullmatch(r'project = "SAT" AND updated >= -1[12]m ORDER BY key', jql)
 
 
+def test_create_ticket_creates_it_with_its_fields_then_writes_its_links_and_status() -> None:
+    # GIVEN a ticket for SAT, with links whose empty end stands for it
+    jira_api = JiraApi()
+    cut = _source(jira_api)
+    ticket = new_ticket(
+        key='',
+        title='Alert on retries',
+        status='Done',
+        labels=('backend',),
+        custom_fields={'size': '🕯️'},
+        parent='SAT-7',
+        links=(
+            new_link(from_key='', relation='blocks', to_key='SAT-9'),
+            new_link(from_key='SAT-4', relation='relates to', to_key=''),
+        ),
+    )
+
+    # WHEN
+    key = cut.create_ticket(ticket)
+
+    # THEN Jira sets the rest
+    assert key == 'SAT-11'
+    assert jira_api.writes() == [
+        ('POST', 'issue', {'fields': {
+            'project': {'key': 'SAT'},
+            'summary': 'Alert on retries',
+            'issuetype': {'name': 'Task'},
+            'customfield_10043': {'value': '🕯️'},
+            'parent': {'key': 'SAT-7'},
+            'labels': ['backend'],
+        }}),
+        ('POST', 'issueLink', {
+            'type': {'name': 'Blocks'}, 'inwardIssue': {'key': 'SAT-11'}, 'outwardIssue': {'key': 'SAT-9'}
+        }),
+        ('POST', 'issueLink', {
+            'type': {'name': 'Relates'}, 'inwardIssue': {'key': 'SAT-4'}, 'outwardIssue': {'key': 'SAT-11'}
+        }),
+        ('POST', 'issue/SAT-11/transitions', {'transition': {'id': '31'}}),
+    ]
+
+
+@pytest.mark.parametrize(('fields', 'message'), [
+    pytest.param({'type': 'Story'}, 'SAT in jira has no type Story, only: Task, Bug', id='type'),
+    pytest.param({'title': ''}, 'jira needs a title and a type to create a ticket', id='title'),
+    pytest.param(
+        {'links': (new_link(from_key='', relation='clones', to_key='SAT-9'),)},
+        'jira has no relation clones, only: blocks, relates to',
+        id='relation',
+    ),
+    pytest.param({'custom_fields': {'size': '🌋'}}, "size can't be 🌋, only: 🔥, 🕯️", id='option'),
+    pytest.param(
+        {'custom_fields': {'colour': 'red'}}, 'jira has no custom field colour in the config', id='custom-field'
+    ),
+])
+def test_create_ticket_raises_without_creating_it_for_a_value_jira_doesnt_take(
+    fields: dict[str, Any], message: str
+) -> None:
+    # GIVEN
+    jira_api = JiraApi()
+    cut = _source(jira_api)
+
+    # WHEN
+    with pytest.raises(SourceError, match=re.escape(message)):
+        cut.create_ticket(new_ticket(key='', **fields))
+
+    # THEN
+    assert jira_api.writes() == []
+
+
+def test_create_ticket_reports_it_was_created_when_a_later_write_fails() -> None:
+    # GIVEN Jira rejecting new links
+    jira_api = JiraApi()
+    jira_api.rejecting.add('POST issueLink')
+    cut = _source(jira_api)
+    ticket = new_ticket(key='', status='Done', links=(new_link(from_key='', relation='blocks', to_key='SAT-9'),))
+
+    # WHEN
+    with pytest.raises(WriteIncomplete) as raised:
+        cut.create_ticket(ticket)
+
+    # THEN
+    assert str(raised.value).startswith(
+        'SAT-11 got created, and not link SAT-11 blocks SAT-9, status Done: POST '
+    )
+
+
 def test_update_ticket_writes_the_fields_in_one_call_then_the_links_and_the_status_last() -> None:
     # GIVEN
     jira_api = JiraApi()

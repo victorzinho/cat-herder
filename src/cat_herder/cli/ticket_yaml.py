@@ -1,5 +1,6 @@
 from collections.abc import Iterable, Mapping
 from dataclasses import replace
+from datetime import UTC, datetime
 from importlib.resources import files
 from typing import Any
 
@@ -7,12 +8,13 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from cat_herder.cli.yaml_format import NO_TIME_SOURCE, Block, dump, hours, load, number, timestamp
-from cat_herder.domain.config import Config
+from cat_herder.domain.config import Config, TicketOrigin
 from cat_herder.domain.ticket import Change, Comment, Link, Sprint, Ticket, TicketSummary
 
 _SCHEMA: dict[str, Any] = yaml.safe_load(files('cat_herder.cli').joinpath('schemas', 'ticket.schema.yaml').read_text())
 _VALIDATOR = Draft202012Validator(_SCHEMA, format_checker=Draft202012Validator.FORMAT_CHECKER)
-_READ_ONLY_IN_EDIT = {name for name, field in _SCHEMA['properties'].items() if field.get('readOnly')} | {'project'}
+_READ_ONLY = {name for name, field in _SCHEMA['properties'].items() if field.get('readOnly')}
+_READ_ONLY_IN_EDIT = _READ_ONLY | {'project'}
 _REPLACED_WHOLE = {'sprints', 'labels', 'components'}
 
 
@@ -55,6 +57,72 @@ def read_ticket_yaml(text: str) -> dict[str, Any]:
     if problems:
         raise TicketYamlError('\n'.join(problems))
     return document
+
+
+def ticket_origin(document: Mapping[str, Any], config: Config) -> TicketOrigin:
+    """The source and space of the document's project, where a ticket is created.
+
+    Raises:
+        TicketYamlError: if the document has no project, or its project isn't configured or has no ticket source.
+    """
+    if 'project' not in document:
+        raise TicketYamlError('project is required to create a ticket')
+    try:
+        project = config.project(document['project'])
+    except KeyError:
+        raise TicketYamlError(f'{document["project"]} is not in projects') from None
+    if not project.tickets:
+        raise TicketYamlError(f'{project.slug} has no ticket source')
+    return project.tickets
+
+
+def new_ticket(
+    document: Mapping[str, Any], origin: TicketOrigin, config: Config, sprint_by_name: Mapping[str, Sprint]
+) -> Ticket:
+    """The ticket the document describes, to create in the origin's space.
+
+    Its key is empty, and so are the link ends left out, which stand for it. Its dates are now, and its status is
+    empty unless the document gives one.
+
+    Args:
+        document: a ticket YAML document, with any of its writable fields.
+        origin: the source and space to create it in.
+        config: the people to read the document with.
+        sprint_by_name: the source's sprints that the document can name.
+
+    Raises:
+        TicketYamlError: if the document has a read-only field, or names a person or sprint that can't be written.
+    """
+    no_ticket: dict[str, Any] = {'parent': None, 'links': []}
+    read_only = sorted([*document.keys() & _READ_ONLY, *_read_only_inside(document, no_ticket)])
+    if read_only:
+        raise TicketYamlError(f'read-only fields can\'t be set when creating: {", ".join(read_only)}')
+    now = datetime.now(UTC)
+    assignee = document.get('assignee')
+    parent = document.get('parent')
+    return Ticket(
+        source=origin.source,
+        key='',
+        space=origin.space,
+        title=document.get('title', ''),
+        type=document.get('type', ''),
+        status=document.get('status', ''),
+        created=now,
+        updated=now,
+        description=document.get('description'),
+        labels=tuple(document.get('labels', [])),
+        components=tuple(document.get('components', [])),
+        assignee=_identity(config, origin.source, assignee) if assignee else None,
+        points=document.get('points'),
+        estimated_hours=document.get('estimated_hours'),
+        sprints=tuple(_sprint(sprint_by_name, name) for name in document.get('sprints', [])),
+        custom_fields=dict(document.get('custom_fields', {})),
+        parent=parent['key'] if parent else None,
+        links=tuple(
+            Link(from_key=link.get('from', ''), relation=link['relation'], to_key=link.get('to', ''))
+            for link in document.get('links', [])
+        ),
+    )
 
 
 def edited_ticket(

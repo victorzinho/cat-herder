@@ -332,6 +332,20 @@ def test_find_sprints_finds_the_stored_ones_with_that_name(
     assert [sprint.source for sprint in sprints] == sources
 
 
+def test_create_creates_the_ticket_and_stores_it_as_the_source_has_it(session: Session, jira_api: JiraApi) -> None:
+    # GIVEN
+    cut = _service(session, jira_api)
+
+    # WHEN
+    key = cut.create(new_ticket(key='', title='Alert on retries'))
+
+    # THEN
+    assert key == 'SAT-11'
+    stored = TicketRepository(session).get('jira', 'SAT-11')
+    assert stored
+    assert stored.ticket.title == 'Alert on retries'
+
+
 def test_edit_writes_the_edit_and_stores_the_ticket_as_the_source_has_it(session: Session, jira_api: JiraApi) -> None:
     # GIVEN SAT-7 as Jira has it, and stored as it was long ago
     cut = _service(session, jira_api)

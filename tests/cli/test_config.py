@@ -1,7 +1,9 @@
 from pathlib import Path
 
 import pytest
+from pytest import CaptureFixture, MonkeyPatch
 
+from cat_herder.cli import main
 from cat_herder.cli.config import CONFIG_PATH_ENV, ConfigError, load_config
 from cat_herder.domain.config import (
     Access,
@@ -17,6 +19,7 @@ from cat_herder.domain.config import (
     TogglSourceConfig,
 )
 from tests.dates import parse
+from tests.jira_api import JiraApi
 
 RESOURCES = Path(__file__).parent.parent / 'resources' / 'config'
 
@@ -139,3 +142,27 @@ def test_load_config_lists_every_problem(filename: str, problems: list[str]) -> 
 
     # THEN
     assert str(error_info.value).splitlines() == [f'{path}: {problem}' for problem in problems]
+
+
+@pytest.mark.parametrize('command', [
+    pytest.param(['create', 'sat-7.yaml'], id='create'),
+    pytest.param(['edit', 'SAT-7', 'sat-7.yaml'], id='edit'),
+    pytest.param(['comment', 'SAT-7', 'Done'], id='comment'),
+])
+def test_writes_contact_no_source_that_the_config_makes_read_only(
+    jira_api: JiraApi, tmp_path: Path, monkeypatch: MonkeyPatch, capsys: CaptureFixture[str], command: list[str]
+) -> None:
+    # GIVEN Jira read-only in the config
+    config = tmp_path / 'config.yaml'
+    cli_config = Path(__file__).parents[1] / 'resources' / 'cli' / 'config.yaml'
+    config.write_text(cli_config.read_text().replace('access: full', 'access: read-only'))
+    monkeypatch.setenv('CAT_HERDER_CONFIG', str(config))
+    (tmp_path / 'sat-7.yaml').write_text('project: sat\ntype: Task\ntitle: Retry meteo imports\n')
+
+    # WHEN
+    exit_code = main(command)
+
+    # THEN
+    assert exit_code == 1
+    assert capsys.readouterr().err == 'cat-herder: jira is read-only in the config\n'
+    assert jira_api.requests == []

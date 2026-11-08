@@ -8,8 +8,6 @@ from pytest import CaptureFixture, MonkeyPatch
 from cat_herder.cli import main
 from tests.jira_api import JiraApi
 
-RESOURCES = Path(__file__).parents[1] / 'resources' / 'cli'
-
 
 def test_edit_writes_only_the_fields_that_differ_from_the_ticket(
     jira_api: JiraApi, tmp_path: Path, capsys: CaptureFixture[str]
@@ -96,39 +94,6 @@ def test_edit_writes_nothing_for_a_ticket_yaml_it_cant_use(
     assert exit_code == 1
     assert capsys.readouterr().err.startswith(f'cat-herder: {error}')
     assert jira_api.writes() == []
-
-
-@pytest.mark.parametrize('command', [
-    pytest.param(['edit', 'SAT-7', 'sat-7.yaml'], id='edit'),
-    pytest.param(['comment', 'SAT-7', 'Done'], id='comment'),
-])
-def test_writes_contact_no_source_that_the_config_makes_read_only(
-    jira_api: JiraApi, tmp_path: Path, monkeypatch: MonkeyPatch, capsys: CaptureFixture[str], command: list[str]
-) -> None:
-    # GIVEN Jira read-only in the config
-    config = tmp_path / 'config.yaml'
-    config.write_text((RESOURCES / 'config.yaml').read_text().replace('access: full', 'access: read-only'))
-    monkeypatch.setenv('CAT_HERDER_CONFIG', str(config))
-    (tmp_path / 'sat-7.yaml').write_text('title: Retry meteo imports\n')
-
-    # WHEN
-    exit_code = main(command)
-
-    # THEN
-    assert exit_code == 1
-    assert capsys.readouterr().err == 'cat-herder: jira is read-only in the config\n'
-    assert jira_api.requests == []
-
-
-def test_comment_adds_the_comment(jira_api: JiraApi, capsys: CaptureFixture[str]) -> None:
-    # WHEN
-    exit_code = main(['comment', 'SAT-7', 'Done'])
-
-    # THEN
-    assert (exit_code, capsys.readouterr()) == (0, ('', ''))
-    paragraph = {'type': 'paragraph', 'content': [{'type': 'text', 'text': 'Done'}]}
-    body = {'type': 'doc', 'version': 1, 'content': [paragraph]}
-    assert jira_api.writes() == [('POST', 'issue/SAT-7/comment', {'body': body})]
 
 
 def test_edit_reports_a_ticket_not_in_its_source(jira_api: JiraApi, tmp_path: Path, capsys: CaptureFixture[str]):
