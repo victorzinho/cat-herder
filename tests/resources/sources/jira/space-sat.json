@@ -373,7 +373,18 @@
           "maxResults": 0,
           "total": 0,
           "comments": []
-        }
+        },
+        "customfield_10035": 2.0,
+        "customfield_10020": [
+          {
+            "id": 44,
+            "name": "All Sprint 3",
+            "state": "future",
+            "boardId": 7,
+            "startDate": "2026-11-17T13:00:00.000Z",
+            "endDate": "2026-12-01T12:00:00.000Z"
+          }
+        ]
       },
       "changelog": {
         "startAt": 0,

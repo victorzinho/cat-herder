@@ -16,7 +16,7 @@ projects:
       open: {tickets: 1, points: 5}
       ticket_speed: 0
       total_speed: 0
-      hours_vs_capacity: -16.17
+      capacity_exceeded_by: -16.17
     people:
       - {person: ana, capacity: 20.42, hours: 4.25, delta: -16.17}
     tickets:
@@ -35,6 +35,6 @@ total:
     open: {tickets: 1, points: 5}
     ticket_speed: 0
     total_speed: 0
-    hours_vs_capacity: -36.58
+    capacity_exceeded_by: -36.58
   people:
     - {person: ana, capacity: 40.83, hours: 4.25, delta: -36.58}

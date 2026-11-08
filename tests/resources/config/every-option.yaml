@@ -1,6 +1,7 @@
 # Every option, with an unquoted datetime in history_from.
 data_dir: ~/cat-herder-data
 default_non_ticket_percent: 20
+capacity_margin_hours: 5
 sources:
   jira:
     type: jira

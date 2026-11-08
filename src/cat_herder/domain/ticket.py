@@ -9,6 +9,12 @@ type CustomValue = str | float | None
 _SPRINT_NAMES_SEPARATOR = ', '
 
 
+class TicketState(StrEnum):
+    OPEN = 'open'
+    DONE = 'done'
+    DISCARDED = 'discarded'
+
+
 class SprintState(StrEnum):
     NOT_STARTED = 'not started'
     IN_PROGRESS = 'in progress'
@@ -41,6 +47,23 @@ class Sprint:
         if not self.start or moment < self.start:
             return False
         return not self.actual_end or moment <= self.actual_end
+
+    def time_left(self, moment: datetime) -> timedelta | None:
+        """The time left to work in it at that moment.
+
+        All of it before it starts, up to its planned end while in progress, never below 0, and none once it has ended.
+        None without its dates.
+        """
+        if not self.duration:
+            return None
+        match self.state:
+            case SprintState.NOT_STARTED:
+                return self.duration
+            case SprintState.IN_PROGRESS:
+                assert self.planned_end
+                return max(self.planned_end - moment, timedelta())
+            case SprintState.ENDED:
+                return timedelta()
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -13,6 +13,10 @@ class Block(dict[str, Any]):
     """A mapping dumped in block style, so its multi-line values can be literal blocks."""
 
 
+class Flow(dict[str, Any]):
+    """A mapping dumped in flow style, on one line even if it holds collections."""
+
+
 def dump(document: object) -> str:
     """The document as the docs' examples show YAML: in order, with collections of scalars in flow style."""
     return yaml.dump(document, Dumper=_Dumper, sort_keys=False, allow_unicode=True, default_flow_style=None, width=1000)
@@ -49,5 +53,10 @@ def _represent_block(dumper: yaml.SafeDumper, value: Block) -> yaml.MappingNode:
     return dumper.represent_mapping('tag:yaml.org,2002:map', value, flow_style=False)
 
 
+def _represent_flow(dumper: yaml.SafeDumper, value: Flow) -> yaml.MappingNode:
+    return dumper.represent_mapping('tag:yaml.org,2002:map', value, flow_style=True)
+
+
 _Dumper.add_representer(str, _represent_str)
 _Dumper.add_representer(Block, _represent_block)
+_Dumper.add_representer(Flow, _represent_flow)

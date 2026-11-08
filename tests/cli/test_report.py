@@ -1,8 +1,10 @@
 from pathlib import Path
 
 import pytest
+from time_machine import TimeMachineFixture
 
 from cat_herder.cli import main
+from tests.dates import parse
 
 RESOURCES = Path(__file__).parents[1] / 'resources' / 'cli'
 
@@ -40,14 +42,38 @@ def test_report_sprint_prints_an_ended_sprint(capsys: pytest.CaptureFixture[str]
     assert capsys.readouterr().out == (RESOURCES / 'report-sprint-all-sprint-1.yaml').read_text()
 
 
-@pytest.mark.parametrize(('sprint', 'error'), [
-    pytest.param('All Sprint 2', 'cat-herder report sprint: All Sprint 2 has not ended', id='not-ended'),
-    pytest.param('Sprint 9', 'cat-herder report sprint: no sprint is called Sprint 9', id='unknown'),
-])
-def test_report_sprint_fails_for_a_sprint_it_cant_report(capsys: pytest.CaptureFixture[str], sprint: str, error: str):
+def test_report_sprint_prints_a_sprint_that_hasnt_started(
+    capsys: pytest.CaptureFixture[str], time_machine: TimeMachineFixture
+) -> None:
+    # GIVEN All Sprint 3 holds SAT-8, with no assignee or estimate
+    time_machine.move_to(parse('2026-11-10T12:00:00Z'), tick=False)
+
     # WHEN
-    exit_code = main(['report', 'sprint', sprint])
+    exit_code = main(['report', 'sprint', 'All Sprint 3'])
+
+    # THEN
+    assert exit_code == 0
+    assert capsys.readouterr().out == (RESOURCES / 'report-sprint-all-sprint-3.yaml').read_text()
+
+
+def test_report_sprint_prints_a_sprint_in_progress(
+    capsys: pytest.CaptureFixture[str], time_machine: TimeMachineFixture
+) -> None:
+    # GIVEN All Sprint 2 runs from November 3rd to 17th, holding SAT-7, which SAT-4 blocks
+    time_machine.move_to(parse('2026-11-10T12:00:00Z'), tick=False)
+
+    # WHEN
+    exit_code = main(['report', 'sprint', 'All Sprint 2'])
+
+    # THEN
+    assert exit_code == 0
+    assert capsys.readouterr().out == (RESOURCES / 'report-sprint-all-sprint-2.yaml').read_text()
+
+
+def test_report_sprint_fails_for_a_sprint_it_doesnt_have(capsys: pytest.CaptureFixture[str]) -> None:
+    # WHEN
+    exit_code = main(['report', 'sprint', 'Sprint 9'])
 
     # THEN
     assert exit_code == 1
-    assert capsys.readouterr().err == f'{error}\n'
+    assert capsys.readouterr().err == 'cat-herder report sprint: no sprint is called Sprint 9\n'

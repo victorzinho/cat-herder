@@ -15,10 +15,10 @@
   type: Task
   status: To do
   assignee: null
-  points: null
+  points: 2
   estimated_hours: null
   custom_fields: {size: null, team: null}
-  sprints: []
+  sprints: [All Sprint 3]
   updated: '2026-10-29T08:00:00Z'
 - key: SAT-10
   title: Alert on failed imports

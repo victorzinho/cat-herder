@@ -5,10 +5,16 @@ from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
 from cat_herder.cli.local_copy import sync_local_copy
-from cat_herder.cli.report_yaml import ended_sprint_report_to_yaml, project_report_to_yaml
+from cat_herder.cli.report_yaml import (
+    ended_sprint_report_to_yaml,
+    ongoing_sprint_report_to_yaml,
+    planned_sprint_report_to_yaml,
+    project_report_to_yaml,
+)
 from cat_herder.domain.config import Config
 from cat_herder.domain.ticket import Sprint, SprintState
-from cat_herder.services.reports_service import ReportsService
+from cat_herder.services.project_report_service import ProjectReportService
+from cat_herder.services.sprint_report_service import SprintReportService
 from cat_herder.services.tickets_service import TicketsService
 from cat_herder.sources.factory import build_ticket_sources
 from cat_herder.store.database import database_session, open_database
@@ -18,8 +24,8 @@ def configure(parser: argparse.ArgumentParser) -> None:
     reports = parser.add_subparsers(title='reports', dest='report', required=True)
     project = reports.add_parser(
         'project',
-        help="a project's points, hours and speed",
-        description="Report a project's done points, its hours on tickets and the rest, and its speed.",
+        help='report on a project',
+        description='Report on a project, over the days given or all of them.',
     )
     project.add_argument('project', help="the project's slug")
     project.add_argument('--from', dest='from_date', type=date.fromisoformat, help='the first day, an ISO date')
@@ -29,8 +35,8 @@ def configure(parser: argparse.ArgumentParser) -> None:
 
     sprint = reports.add_parser(
         'sprint',
-        help="a sprint's plan, hours and outcome",
-        description="Report a sprint's plan, hours and outcome per project and in total. Only ended sprints, for now.",
+        help='report on a sprint',
+        description='Report on a sprint, per project and in total.',
     )
     sprint.add_argument('sprint', help="the sprint's name, or jira:<name> to name its source")
     sprint.add_argument('--force-fetch', action='store_true', help="fetch even within the source's window")
@@ -48,7 +54,7 @@ def run_project(args: argparse.Namespace, config: Config, environ: Mapping[str, 
         return 2
     with database_session(open_database(config.data_dir)) as session:
         sync_local_copy(config, session, environ, args.force_fetch, [args.project])
-        report = ReportsService(config, session).project_report(
+        report = ProjectReportService(config, session).project_report(
             args.project,
             start=_midnight(args.from_date) if args.from_date else None,
             end=_midnight(args.to_date + timedelta(days=1)) if args.to_date else None,
@@ -61,7 +67,7 @@ def run_sprint(args: argparse.Namespace, config: Config, environ: Mapping[str, s
     """Print the report on the sprint, after syncing every project.
 
     Returns:
-        The exit code: 1 if no sprint, or several, have that name, or it hasn't ended.
+        The exit code: 1 if no sprint, or several, have that name.
     """
     source, separator, name = args.sprint.partition(':')
     if not separator or source not in config.ticket_sources():
@@ -73,8 +79,16 @@ def run_sprint(args: argparse.Namespace, config: Config, environ: Mapping[str, s
         if problem := _sprint_problem(name, sprints):
             print(f'cat-herder report sprint: {problem}', file=sys.stderr)
             return 1
-        report = ReportsService(config, session).ended_sprint_report(sprints[0])
-    print(ended_sprint_report_to_yaml(report), end='')
+        reports_service = SprintReportService(config, session)
+        sprint = sprints[0]
+        match sprint.state:
+            case SprintState.NOT_STARTED:
+                output = planned_sprint_report_to_yaml(reports_service.planned_sprint_report(sprint))
+            case SprintState.IN_PROGRESS:
+                output = ongoing_sprint_report_to_yaml(reports_service.ongoing_sprint_report(sprint))
+            case SprintState.ENDED:
+                output = ended_sprint_report_to_yaml(reports_service.ended_sprint_report(sprint))
+    print(output, end='')
     return 0
 
 
@@ -91,8 +105,6 @@ def _sprint_problem(name: str, sprints: Sequence[Sprint]) -> str | None:
         return f'no sprint is called {name}'
     if len(sprints) > 1:
         return f'{name} is in several sources, use one of: {", ".join(f"{sprint.source}:{name}" for sprint in sprints)}'
-    if sprints[0].state != SprintState.ENDED:
-        return f'{name} has not ended'
     return None
 
 

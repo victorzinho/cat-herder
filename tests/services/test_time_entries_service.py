@@ -1,4 +1,4 @@
-from collections.abc import Collection, Generator
+from collections.abc import Collection
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -14,7 +14,6 @@ from cat_herder.services.time_entries_service import REFRESH_DAYS, TimeEntriesSe
 from cat_herder.sources.time_source import TimeSource
 from cat_herder.sources.toggl.client import TogglClient
 from cat_herder.sources.toggl.source import TogglSource
-from cat_herder.store.database import database_session, open_database
 from cat_herder.store.ticket_repository import TicketRepository
 from cat_herder.store.ticket_space_sync_repository import TicketSpaceSyncRepository
 from cat_herder.store.time_entry_repository import TimeEntryRepository
@@ -22,12 +21,6 @@ from cat_herder.store.time_source_sync_repository import TimeSourceSync, TimeSou
 from tests.factories import new_sprint, new_ticket, new_time_entry
 from tests.jira_api import JIRA_CONFIG
 from tests.toggl_api import ADMIN_PROJECT, SAT_PROJECT, TOGGL_CONFIG, TogglApi
-
-
-@pytest.fixture
-def session(tmp_path: Path) -> Generator[Session]:
-    with database_session(open_database(tmp_path)) as session:
-        yield session
 
 
 @pytest.fixture

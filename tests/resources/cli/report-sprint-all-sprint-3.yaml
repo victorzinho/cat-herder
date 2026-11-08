@@ -1,0 +1,35 @@
+sprint: All Sprint 3
+start: '2026-11-17T13:00:00Z'
+end: '2026-12-01T12:00:00Z'
+projects:
+  - project: sat
+    capacity:
+      total_hours: 19.94
+      non_ticket_percent: 65
+      for_tickets_hours: 7.04
+    ticket_totals:
+      num: 1
+      points: 2
+      estimated_hours: 0
+    people:
+      - {person: ana, capacity: 19.94, ticket_capacity: 7.04, assigned: 0}
+    tickets:
+      - {key: SAT-8, assignee: null, points: 2, estimate: null}
+total:
+  capacity:
+    total_hours: 39.88
+    for_tickets_hours: 14.08
+  ticket_totals:
+    num: 1
+    points: 2
+    estimated_hours: 0
+  people:
+    - {person: ana, capacity: 39.88, ticket_capacity: 14.08, assigned: 0}
+problems:
+  spare_capacity:
+    - {person: all, project: all, by: 14.08}
+    - {person: all, project: sat, by: 7.04}
+    - {person: ana, project: all, by: 14.08}
+    - {person: ana, project: sat, by: 7.04}
+  unassigned: [SAT-8]
+  no_estimate: [SAT-8]

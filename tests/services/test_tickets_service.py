@@ -1,5 +1,4 @@
 import json
-from collections.abc import Generator
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -15,7 +14,6 @@ from cat_herder.services.tickets_service import CURRENT_SPRINT, KeyNotResolved, 
 from cat_herder.sources.errors import SourceUnreachable
 from cat_herder.sources.jira.client import JiraClient
 from cat_herder.sources.jira.source import JiraSource
-from cat_herder.store.database import database_session, open_database
 from cat_herder.store.sprint_repository import SprintRepository
 from cat_herder.store.ticket_repository import TicketRepository
 from cat_herder.store.ticket_space_sync_repository import TicketSpaceSyncRepository
@@ -48,12 +46,6 @@ TWO_JIRAS = replace(
         ),
     ),
 )
-
-
-@pytest.fixture
-def session(tmp_path: Path) -> Generator[Session]:
-    with database_session(open_database(tmp_path)) as session:
-        yield session
 
 
 @pytest.fixture

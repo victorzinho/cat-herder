@@ -8,6 +8,7 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from cat_herder.domain.config import (
+    DEFAULT_CAPACITY_MARGIN_HOURS,
     Access,
     CommandCredential,
     Config,
@@ -88,6 +89,7 @@ def _build(document: dict[str, Any]) -> Config:
             Repository(slug=slug, path=Path(path)) for slug, path in document.get('repositories', {}).items()
         ),
         default_non_ticket_percent=document.get('default_non_ticket_percent'),
+        capacity_margin_hours=document.get('capacity_margin_hours', DEFAULT_CAPACITY_MARGIN_HOURS),
     )
 
 

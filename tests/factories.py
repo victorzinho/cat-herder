@@ -2,7 +2,7 @@ from dataclasses import replace
 from datetime import timedelta
 from typing import Any
 
-from cat_herder.domain.config import Access, EnvCredential, JiraSourceConfig, TogglSourceConfig
+from cat_herder.domain.config import Access, EnvCredential, JiraSourceConfig, TimeOrigin, TogglSourceConfig
 from cat_herder.domain.ticket import (
     Attachment,
     Change,
@@ -66,6 +66,7 @@ _TIME_ENTRY = TimeEntry(
     start=_DATE,
     end=_DATE + timedelta(hours=1),
 )
+_TIME_ORIGIN = TimeOrigin(source='toggl', spaces=('SAT',))
 _CHANGE = Change(field='status', author='account-ana', before='To do', after='In progress', date=_DATE)
 
 
@@ -105,5 +106,11 @@ def new_toggl_source_config(**overrides: Any) -> TogglSourceConfig:
     return replace(_TOGGL_SOURCE_CONFIG, **overrides)
 
 
-def new_time_entry(**overrides: Any) -> TimeEntry:
-    return replace(_TIME_ENTRY, **overrides)
+def new_time_entry(hours: float | None = None, **overrides: Any) -> TimeEntry:
+    """With hours, it ends that long after its start."""
+    entry = replace(_TIME_ENTRY, **overrides)
+    return replace(entry, end=entry.start + timedelta(hours=hours)) if hours is not None else entry
+
+
+def new_time_origin(**overrides: Any) -> TimeOrigin:
+    return replace(_TIME_ORIGIN, **overrides)

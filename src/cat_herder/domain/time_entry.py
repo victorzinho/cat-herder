@@ -1,4 +1,4 @@
-from collections.abc import Collection
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
@@ -6,6 +6,8 @@ from enum import StrEnum
 from cat_herder.domain.ticket import Sprint
 
 SECONDS_PER_HOUR = 3600
+# Hours closer than this are equal, so rounding never makes a difference.
+HOURS_TOLERANCE = 0.01
 
 
 class TimeEntryFlag(StrEnum):
@@ -55,3 +57,42 @@ class TimeEntry:
         if self.ticket_key:
             return self.ticket_key in sprint_ticket_keys and sprint.covers(self.start)
         return bool(sprint_ticket_keys) and sprint.covers(self.start)
+
+
+@dataclass(frozen=True, kw_only=True)
+class Hours:
+    """Hours on tickets, and the rest (entries with no ticket)."""
+
+    tickets: float = 0
+    others: float = 0
+
+    @classmethod
+    def of(cls, entries: Iterable[TimeEntry]) -> 'Hours':
+        tickets = others = 0.0
+        for entry in entries:
+            if entry.ticket_key:
+                tickets += entry.hours
+            else:
+                others += entry.hours
+        return cls(tickets=tickets, others=others)
+
+    @classmethod
+    def of_nullable(cls, entries: Iterable[TimeEntry] | None) -> 'Hours | None':
+        return None if entries is None else cls.of(entries)
+
+    def __add__(self, other: 'Hours') -> 'Hours':
+        return Hours(tickets=self.tickets + other.tickets, others=self.others + other.others)
+
+    @property
+    def total(self) -> float:
+        return self.tickets + self.others
+
+    @property
+    def tickets_percent(self) -> float | None:
+        """Percent of the hours on tickets. None without hours."""
+        return 100 * self.tickets / self.total if self.total else None
+
+    @property
+    def others_percent(self) -> float | None:
+        """Percent of the hours on tasks without a ticket. None without hours."""
+        return 100 * self.others / self.total if self.total else None

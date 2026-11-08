@@ -4,8 +4,11 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Protocol
 
-from cat_herder.domain.ticket import Ticket
+from cat_herder.domain.ticket import Ticket, TicketState, key_order
 from cat_herder.domain.time_entry import TimeEntry
+
+# How far hours assigned can be from a capacity for tickets without it being a problem, unless the config says.
+DEFAULT_CAPACITY_MARGIN_HOURS = 1
 
 
 class Access(StrEnum):
@@ -61,6 +64,31 @@ class TicketSourceConfig(SourceConfig):
             change.date for change in ticket.changes if change.field == 'status' and change.after in self.done_statuses
         ]
         return into_done[-1] if into_done else ticket.created
+
+    def state(self, status: str) -> TicketState:
+        """Where a ticket with that status stands."""
+        if status in self.done_statuses:
+            return TicketState.DONE
+        if status in self.discarded_statuses:
+            return TicketState.DISCARDED
+        return TicketState.OPEN
+
+    def open_blockers(self, ticket: Ticket) -> tuple[str, ...]:
+        """The keys of the open tickets blocking it, through blocking_relation, in key order.
+
+        None without blocking_relation. A blocker the ticket doesn't know the status of counts as open.
+        """
+        if not self.blocking_relation:
+            return ()
+        status_by_key = {linked.key: linked.status for linked in ticket.linked}
+        blockers = {
+            link.from_key
+            for link in ticket.links
+            if link.relation == self.blocking_relation
+            and link.to_key == ticket.key
+            and self.state(status_by_key.get(link.from_key, '')) == TicketState.OPEN
+        }
+        return tuple(sorted(blockers, key=key_order))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -147,6 +175,7 @@ class Config:
     people: tuple[Person, ...] = ()
     repositories: tuple[Repository, ...] = ()
     default_non_ticket_percent: float | None = None
+    capacity_margin_hours: float = DEFAULT_CAPACITY_MARGIN_HOURS
 
     def source(self, slug: str) -> SourceConfig:
         """The source with that slug.

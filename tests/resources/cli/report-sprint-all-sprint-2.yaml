@@ -1,0 +1,57 @@
+sprint: All Sprint 2
+start: '2026-11-03T16:00:00Z'
+end: '2026-11-17T12:00:00Z'
+now: '2026-11-10T12:00:00Z'
+time_left: 7d 0h
+projects:
+  - project: sat
+    planned:
+      capacity: 19.76
+      estimate: 1.5
+    hours_done:
+      total: 0
+      tickets: 0
+      others: 0
+    closed:
+      done: {tickets: 0, points: 0}
+    left:
+      capacity:
+        total_hours: 10
+        non_ticket_percent: 65
+        for_tickets_hours: 3.53
+      ticket_totals:
+        num: 1
+        points: 5
+        estimated_hours: 1.5
+    people:
+      - {person: ana, capacity: 19.76, hours: 0, ticket_capacity_left: 3.53, assigned_left: 1.5}
+    tickets:
+      - {key: SAT-7, assignee: ana, status: In progress, points: 5, estimate: 1.5, hours: 0, hours_left: 1.5}
+total:
+  planned:
+    capacity: 39.52
+    estimate: 1.5
+  hours_done:
+    total: 0
+    tickets: 0
+    others: 0
+  closed:
+    done: {tickets: 0, points: 0}
+  left:
+    capacity:
+      total_hours: 20
+      for_tickets_hours: 7.06
+    ticket_totals:
+      num: 1
+      points: 5
+      estimated_hours: 1.5
+  people:
+    - {person: ana, capacity: 39.52, hours: 0, ticket_capacity_left: 7.06, assigned_left: 1.5}
+problems:
+  spare_capacity:
+    - {person: all, project: all, by: 5.56}
+    - {person: all, project: sat, by: 2.03}
+    - {person: ana, project: all, by: 5.56}
+    - {person: ana, project: sat, by: 2.03}
+  blocked_outside:
+    - {key: SAT-7, by: [SAT-4]}

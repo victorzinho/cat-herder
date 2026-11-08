@@ -18,6 +18,11 @@ properties:
     description: Share of capacity set aside for non-ticket work when planning a sprint, for projects with no ended sprints or no time source. Without it, those projects set nothing aside.
     minimum: 0
     maximum: 100
+  capacity_margin_hours:
+    type: number
+    description: How many hours assigned above or below a capacity for tickets sprint reports accept before listing it in `wont_fit` or `spare_capacity`.
+    minimum: 0
+    default: 1
   sources:
     type: object
     description: Ticket and time systems, by slug. The slug is what qualifies keys, as in `jira:SAT-7`.
@@ -241,6 +246,7 @@ $defs:
 examples:
   - data_dir: ~/.local/share/cat-herder
     default_non_ticket_percent: 20
+    capacity_margin_hours: 2
     sources:
       jira:
         type: jira

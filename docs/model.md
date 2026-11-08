@@ -13,6 +13,7 @@
 | **Attachment** | A file on a ticket. |
 | **Sprint** | Identified by `<source_slug>:<sprint_id>`. People are derived, and it has no owner. |
 | **Time entry** | Identified by `<source_slug>:<entry_id>`. Datetime range for a person in a project, with a description. Optionally linked to a ticket and/or sprint. |
+| **Workload** | A person's, or everyone's, capacity and work in one of a sprint's projects, or in the whole sprint. |
 
 - A `Source` can have multiple `Project`.
 - A `Project` can receive tickets from at most one space in a single ticket `Source`.
@@ -84,8 +85,9 @@ Tickets have a closed set of fields, and only the config can add to it, as custo
 ## Sprints
 
 - A sprint has a name, a state (not started, in progress or ended) from the source, a start, a planned end and an actual end.
-- A sprint's people are whoever has capacity in one of its projects, plus whoever has hours in it (ended) or holds one of its tickets (not started or in progress).
+- A sprint's people are whoever has capacity or hours in one of its projects, plus, until it ends, whoever holds one of its tickets.
 - A sprint that hasn't ended has no actual end yet, so its window runs from its start.
+- A sprint's time left is all of it before it starts, up to its planned end while in progress, and none once it has ended.
 
 ## Time entries
 
@@ -96,4 +98,21 @@ Tickets have a closed set of fields, and only the config can add to it, as custo
 - An entry inside two overlapping sprints counts in both, which is accepted for now.
 - Entries in time-only projects count in no sprint unless they name one.
 - Non-ticket work is hours from entries with no ticket.
-- Planning a sprint sets aside a share of each project's capacity for non-ticket work: that share of the project's hours in its ended sprints, or `default_non_ticket_percent` if it has no ended sprints or no time source.
+
+## Workloads
+
+A workload is one person's time and work, or everyone's, in one of a sprint's projects or in the whole sprint.
+Everyone's covers all the people together, plus the tickets nobody is assigned to.
+
+- **Capacity**: the hours they can work during the sprint, from their weekly hours. In a project, a person counts their hours for that project. In the whole sprint, they count their own weekly hours, even if their project hours add up to something else.
+- **Capacity left**: the part of the capacity in the time the sprint has left. Before it starts, that's all of it; once it ends, nothing.
+- **Non-ticket share**: the percent of the capacity kept for work outside tickets, such as meetings. A project's is the share of its hours that went to work outside tickets over its last 3 ended sprints, or `default_non_ticket_percent` if it has no ended sprints or no time source. Someone working on several projects gets the average of their projects' shares, each project counting in proportion to their hours in it. Everyone's share in the whole sprint averages the people's shares the same way.
+- **Capacity for tickets**: the capacity left, minus the non-ticket share.
+- **Hours done**: the hours already logged in the sprint.
+- **Work left**: what's still to do on their open tickets: each ticket's estimate minus the hours already logged on it, never below zero.
+
+Sprint reports flag:
+
+- **Won't fit**: the work left is more than the capacity for tickets, by more than `capacity_margin_hours` (1 h by default).
+- **Spare capacity**: the work left is less than the capacity for tickets, by more than that margin.
+- **Capacity exceeded**: the hours done are already more than the capacity.

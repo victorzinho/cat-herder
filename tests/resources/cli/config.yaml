@@ -7,6 +7,7 @@ sources:
     access: full
     fetch_window_seconds: 60
     done_statuses: [Done]
+    blocking_relation: blocks
     fields: {points: customfield_10035, sprints: customfield_10020}
     custom_fields: {size: customfield_10043, team: customfield_10044}
     credentials: {email: {env: JIRA_EMAIL}, token: {env: JIRA_TOKEN}}

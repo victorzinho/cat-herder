@@ -47,6 +47,7 @@ def test_load_config_builds_every_option() -> None:
     assert config == Config(
         data_dir=Path.home() / 'cat-herder-data',
         default_non_ticket_percent=20,
+        capacity_margin_hours=5,
         sources=(
             JiraSourceConfig(
                 slug='jira',
