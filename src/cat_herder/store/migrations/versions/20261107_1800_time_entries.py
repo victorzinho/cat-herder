@@ -27,7 +27,7 @@ def upgrade() -> None:
         CREATE TABLE time_source_syncs (
             source VARCHAR NOT NULL PRIMARY KEY,
             spaces JSON NOT NULL,
-            resume_from DATE NOT NULL,
+            resume_from DATETIME NOT NULL,
             synced_at DATETIME NOT NULL
         )
     """)

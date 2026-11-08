@@ -5,12 +5,13 @@ from typing import Any
 
 import httpx
 
+from tests.dates import parse
 from tests.factories import new_toggl_source_config
 
 RESOURCES = Path(__file__).parent / 'resources' / 'sources' / 'toggl'
 TOGGL_HOST = 'api.track.toggl.com'
 # The source the resources come from.
-TOGGL_CONFIG = new_toggl_source_config(workspace=1, history_from=date(2026, 1, 1))
+TOGGL_CONFIG = new_toggl_source_config(workspace=1, history_from=parse('2026-01-01T00:00:00Z'))
 # The Toggl projects with entries in the resources, by name.
 SAT_PROJECT = 'SAT'
 ADMIN_PROJECT = 'Admin'

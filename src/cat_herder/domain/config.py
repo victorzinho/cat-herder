@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Protocol
@@ -66,7 +66,7 @@ class TicketSourceConfig(SourceConfig):
 class TimeSourceConfig(SourceConfig):
     """What every time source has. Entries before history_from are never fetched."""
 
-    history_from: date
+    history_from: datetime
 
 
 @dataclass(frozen=True, kw_only=True)

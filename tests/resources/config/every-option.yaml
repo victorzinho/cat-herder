@@ -1,4 +1,4 @@
-# Every option, with an unquoted date in history_from.
+# Every option, with an unquoted datetime in history_from.
 data_dir: ~/cat-herder-data
 default_non_ticket_percent: 20
 sources:
@@ -18,7 +18,7 @@ sources:
     workspace: 123
     access: read-only
     fetch_window_seconds: 900
-    history_from: 2026-01-01
+    history_from: 2026-01-01T00:00:00+01:00
     credentials: {token: {env: TOGGL_TOKEN}}
 people:
   ana:

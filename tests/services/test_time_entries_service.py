@@ -1,6 +1,6 @@
 from collections.abc import Collection, Generator
 from dataclasses import dataclass, replace
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -44,12 +44,12 @@ def test_spent_hours_sums_the_entries_on_the_ticket_after_syncing_from_history_f
     # WHEN
     hours = cut.spent_hours(new_ticket(key='SAT-7', space='SAT'))
 
-    # THEN 9001 and 9002 are on SAT-7, and 9004 names two tickets. The search starts a day before history_from's local
-    # midnight in UTC, which is December 30 or 31 depending on the time zone.
+    # THEN 9001 and 9002 are on SAT-7, and 9004 names two tickets. The search starts a day before history_from's UTC
+    # date, and the next sync resumes REFRESH_DAYS before this one.
     assert hours == 3.5
-    assert toggl_api.searches()[0]['start_date'] in {'2025-12-30', '2025-12-31'}
+    assert toggl_api.searches()[0]['start_date'] == '2025-12-31'
     sync = TimeSourceSyncRepository(session).get_last_sync(_origin(SAT_PROJECT, ADMIN_PROJECT))
-    assert sync and sync.resume_from == _refresh_from()
+    assert sync and sync.synced_at - sync.resume_from == timedelta(days=REFRESH_DAYS)
 
 
 def test_spent_hours_is_none_without_a_time_source(session: Session, toggl_api: TogglApi) -> None:
@@ -96,7 +96,8 @@ def test_sync_replaces_the_last_30_days_or_everything_when_forced(
     ]
     TimeEntryRepository(session).replace(_origin(SAT_PROJECT), _days_ago(400), _days_ago(0), stored)
     window = timedelta(seconds=TOGGL_CONFIG.fetch_window_seconds)
-    synced_before = TimeSourceSync(resume_from=_refresh_from(), synced_at=datetime.now(UTC) - window * 2)
+    synced_at = datetime.now(UTC) - window * 2
+    synced_before = TimeSourceSync(resume_from=synced_at - timedelta(days=REFRESH_DAYS), synced_at=synced_at)
     TimeSourceSyncRepository(session).save(_origin(SAT_PROJECT, ADMIN_PROJECT), synced_before)
     cut = _service(session, toggl_api)
 
@@ -209,10 +210,6 @@ def _config(**toggl_overrides: Any) -> Config:
 
 def _origin(*spaces: str) -> TimeOrigin:
     return TimeOrigin(source='toggl', spaces=spaces)
-
-
-def _refresh_from() -> date:
-    return date.today() - timedelta(days=REFRESH_DAYS)
 
 
 def _service(session: Session, toggl_api: TogglApi, config: Config | None = None) -> TimeEntriesService:

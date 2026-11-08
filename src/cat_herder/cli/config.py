@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from datetime import date
+from datetime import datetime
 from importlib.resources import files
 from pathlib import Path
 from typing import Any
@@ -61,7 +61,7 @@ def load_config(environ: Mapping[str, str]) -> Config:
 
 
 class _DatesAsStringsLoader(yaml.SafeLoader):
-    # The schema checks dates as strings, but YAML turns an unquoted 2026-01-01 into a date.
+    # The schema checks datetimes as strings, but YAML turns an unquoted 2026-01-01T00:00:00Z into a datetime.
     yaml_implicit_resolvers = {
         first_char: [(tag, regexp) for tag, regexp in resolvers if tag != 'tag:yaml.org,2002:timestamp']
         for first_char, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items()
@@ -113,7 +113,7 @@ def _source(slug: str, source: dict[str, Any]) -> SourceConfig:
         access=Access(source['access']),
         fetch_window_seconds=source['fetch_window_seconds'],
         workspace=source['workspace'],
-        history_from=date.fromisoformat(source['history_from']),
+        history_from=datetime.fromisoformat(source['history_from']),
         token=_credential(source['credentials']['token']),
     )
 

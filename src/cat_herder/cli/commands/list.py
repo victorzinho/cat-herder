@@ -64,4 +64,5 @@ def _datetime(value: str) -> datetime:
         parsed = datetime.fromisoformat(value)
     except ValueError as error:
         raise argparse.ArgumentTypeError(f'{value} is not an ISO date or datetime') from error
+    # Without an offset, in the machine's time zone.
     return parsed if parsed.tzinfo else parsed.astimezone()

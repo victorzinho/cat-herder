@@ -157,7 +157,7 @@ $defs:
       fetch_window_seconds: {$ref: '#/$defs/fetch_window_seconds'}
       history_from:
         type: string
-        format: date
+        format: date-time
         description: Date the first fetch starts from. Earlier entries are never fetched.
       credentials:
         type: object
@@ -258,7 +258,7 @@ examples:
         workspace: 123
         access: read-only
         fetch_window_seconds: 900
-        history_from: '2026-01-01'
+        history_from: '2026-01-01T00:00:00+01:00'
         credentials: {token: {env: TOGGL_TOKEN}}
     people:
       ana:

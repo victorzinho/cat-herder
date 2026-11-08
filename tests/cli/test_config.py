@@ -1,4 +1,3 @@
-from datetime import date
 from pathlib import Path
 
 import pytest
@@ -17,6 +16,7 @@ from cat_herder.domain.config import (
     TimeOrigin,
     TogglSourceConfig,
 )
+from tests.dates import parse
 
 RESOURCES = Path(__file__).parent.parent / 'resources' / 'config'
 
@@ -67,7 +67,7 @@ def test_load_config_builds_every_option() -> None:
                 access=Access.READ_ONLY,
                 fetch_window_seconds=900,
                 workspace=123,
-                history_from=date(2026, 1, 1),
+                history_from=parse('2026-01-01T00:00:00+01:00'),
                 token=EnvCredential(name='TOGGL_TOKEN'),
             ),
         ),
@@ -109,7 +109,7 @@ def test_load_config_builds_every_option() -> None:
                 "$.sources.jira: Additional properties are not allowed ('fieldz' was unexpected)",
                 "$.sources.toggl.credentials.token: {'env': 'TOGGL_TOKEN', 'command': 'pass show toggl/token'} is not "
                 'valid under any of the given schemas',
-                "$.sources.toggl.history_from: '2026-13-01' is not a 'date'",
+                "$.sources.toggl.history_from: '2026-01-01' is not a 'date-time'",
             ],
             id='errors inside sources',
         ),

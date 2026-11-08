@@ -14,7 +14,7 @@ sources:
     workspace: 123
     access: read-only
     fetch_window_seconds: 900
-    history_from: 2026-13-01
+    history_from: 2026-01-01
     credentials: {token: {env: TOGGL_TOKEN, command: pass show toggl/token}}
 projects:
   sat:

@@ -2,7 +2,7 @@ import logging
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import replace
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -26,7 +26,7 @@ REFRESH_DAYS = 30
 class TimeEntriesService:
     """Reads answer from the local copy, after syncing into it when the source's window has passed.
 
-    A time source is synced whole, all its configured spaces at once: the first time from its history_from until today,
+    A time source is synced whole, all its configured spaces at once: the first time from its history_from until now,
     then the last REFRESH_DAYS. A change in its configured spaces syncs it from history_from again. If the source can't
     be reached or answers with an error, reads answer from the local copy and log a warning, and the next sync starts
     over.
@@ -93,16 +93,14 @@ class TimeEntriesService:
         except SourceError as error:
             self._warn_local_copy(origin, 'failed', error)
 
-    def _walk(self, source: TimeSource, origin: TimeOrigin, start: date, now: datetime) -> None:
-        until = date.today() + timedelta(days=1)
-        while start < until:
-            end = min(start + timedelta(days=source.max_fetch_days), until)
-            start_at, end_at = _local_midnight(start), _local_midnight(end)
-            entries = source.fetch_time_entries(origin.spaces, start_at, end_at)
-            self._time_entry_repository.replace(origin, start_at, end_at, [self._validated(entry) for entry in entries])
+    def _walk(self, source: TimeSource, origin: TimeOrigin, start: datetime, now: datetime) -> None:
+        while start < now:
+            end = min(start + timedelta(days=source.max_fetch_days), now)
+            entries = source.fetch_time_entries(origin.spaces, start, end)
+            self._time_entry_repository.replace(origin, start, end, [self._validated(entry) for entry in entries])
             start = end
 
-        sync = TimeSourceSync(resume_from=date.today() - timedelta(days=REFRESH_DAYS), synced_at=now)
+        sync = TimeSourceSync(resume_from=now - timedelta(days=REFRESH_DAYS), synced_at=now)
         self._time_source_sync_repository.save(origin, sync)
 
     def _validated(self, entry: TimeEntry) -> TimeEntry:
@@ -131,7 +129,3 @@ class TimeEntriesService:
         local_copy = f'are a local copy from {sync.synced_at:%Y-%m-%d}' if sync else 'were never synced'
         detail = f': {error}' if error else ''
         _logger.warning('%s %s, its time entries %s%s', origin.source, problem, local_copy, detail)
-
-
-def _local_midnight(day: date) -> datetime:
-    return datetime.combine(day, time()).astimezone()
