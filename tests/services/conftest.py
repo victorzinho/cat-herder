@@ -90,7 +90,7 @@ def save_sprint_1(session: Session) -> Callable[..., Sprint]:
             )),
             new_ticket(key='SAT-3', status='To do', points=2, estimated_hours=2, changes=(
                 _into_sprint_1(october(1) - timedelta(hours=1)),
-                new_change(field='sprints', before='Sprint 1', after=None, date=october(8)),
+                new_change(field='sprints', before='1', after=None, date=october(8)),
             )),
             new_ticket(key='SAT-4', status='Cancelled', points=1, estimated_hours=10, changes=(
                 _into_sprint_1(september(28)), _status('To do', 'Cancelled', october(12)),
@@ -168,7 +168,7 @@ def save_sprint_2(session: Session) -> Callable[..., Sprint]:
 
 
 def _into_sprint_1(day: datetime) -> Change:
-    return new_change(field='sprints', before=None, after='Sprint 1', date=day)
+    return new_change(field='sprints', before=None, after='1', date=day)
 
 
 def _status(before: str, after: str, day: datetime) -> Change:

@@ -12,7 +12,7 @@ required: [data_dir, sources, projects]
 properties:
   data_dir:
     type: string
-    description: Directory for the local database and downloaded attachments. A leading `~` expands to the home directory.
+    description: Directory for the local database and downloaded attachments. A leading `~` expands to the home directory, and a relative path is relative to the config's directory.
   default_non_ticket_percent:
     type: number
     description: Share of capacity set aside for non-ticket work when planning a sprint, for projects with no ended sprints or no time source. Without it, those projects set nothing aside.
@@ -45,7 +45,7 @@ properties:
     additionalProperties: {$ref: '#/$defs/person'}
   repositories:
     type: object
-    description: Local git repositories, by slug. Each value is the path to the main repository; its worktrees count as the same repository.
+    description: Local git repositories, by slug. Each value is the path to the main repository, read as `data_dir` is; its worktrees count as the same repository.
     propertyNames: {$ref: '#/$defs/slug'}
     additionalProperties:
       type: string

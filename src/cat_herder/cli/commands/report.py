@@ -38,7 +38,9 @@ def configure(parser: argparse.ArgumentParser) -> None:
         help='report on a sprint',
         description='Report on a sprint, per project and in total.',
     )
-    sprint.add_argument('sprint', help="the sprint's name, or jira:<name> to name its source")
+    which = sprint.add_mutually_exclusive_group(required=True)
+    which.add_argument('sprint', nargs='?', help="the sprint's name, or jira:<name> to name its source")
+    which.add_argument('--id', help="the sprint's ID in its source, or jira:<id> to name its source")
     sprint.add_argument('--force-fetch', action='store_true', help="fetch even within the source's window")
     sprint.set_defaults(run=run_sprint)
 
@@ -67,16 +69,20 @@ def run_sprint(args: argparse.Namespace, config: Config, environ: Mapping[str, s
     """Print the report on the sprint, after syncing every project.
 
     Returns:
-        The exit code: 1 if no sprint, or several, have that name.
+        The exit code: 1 if no sprint, or several, have that name or ID.
     """
-    source, separator, name = args.sprint.partition(':')
+    given = args.id or args.sprint
+    source, separator, name = given.partition(':')
     if not separator or source not in config.ticket_sources():
-        source, name = None, args.sprint
+        source, name = None, given
     with database_session(open_database(config.data_dir)) as session:
         sync_local_copy(config, session, environ, args.force_fetch)
         tickets_service = TicketsService(config, session, build_ticket_sources(config, environ), None)
-        sprints = tickets_service.find_sprints(name, source)
-        if problem := _sprint_problem(name, sprints):
+        if args.id:
+            sprints, missing = tickets_service.find_sprints_by_id(name, source), f'no sprint has ID {given}'
+        else:
+            sprints, missing = tickets_service.find_sprints(name, source), f'no sprint is called {given}'
+        if problem := _sprint_problem(given, sprints, missing):
             print(f'cat-herder report sprint: {problem}', file=sys.stderr)
             return 1
         reports_service = SprintReportService(config, session)
@@ -100,11 +106,12 @@ def _project_usage_problem(args: argparse.Namespace, config: Config) -> str | No
     return None
 
 
-def _sprint_problem(name: str, sprints: Sequence[Sprint]) -> str | None:
+def _sprint_problem(given: str, sprints: Sequence[Sprint], missing: str) -> str | None:
     if not sprints:
-        return f'no sprint is called {name}'
+        return missing
     if len(sprints) > 1:
-        return f'{name} is in several sources, use one of: {", ".join(f"{sprint.source}:{name}" for sprint in sprints)}'
+        options = ', '.join(f'--id {sprint.source}:{sprint.id}' for sprint in sprints)
+        return f'{given} is several sprints, use one of: {options}'
     return None
 
 

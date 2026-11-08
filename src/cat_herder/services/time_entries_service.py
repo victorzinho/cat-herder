@@ -40,6 +40,7 @@ class TimeEntriesService:
         self._time_source_sync_repository = TimeSourceSyncRepository(session)
         self._ticket_space_sync_repository = TicketSpaceSyncRepository(session)
         self._source_by_slug = {source.slug: source for source in sources}
+        self._ticket_spaces = {project.tickets.space for project in config.projects if project.tickets}
 
     def sync(self, force_fetch: bool = False, project_slugs: Sequence[str] = ()) -> None:
         """Sync the projects' time sources into the local copy, each source whole.
@@ -98,7 +99,7 @@ class TimeEntriesService:
     def _walk(self, source: TimeSource, origin: TimeOrigin, start: datetime, now: datetime) -> None:
         while start < now:
             end = min(start + timedelta(days=source.max_fetch_days), now)
-            entries = source.fetch_time_entries(origin.spaces, start, end)
+            entries = source.fetch_time_entries(origin.spaces, start, end, self._ticket_spaces)
             self._time_entry_repository.replace(origin, start, end, [self._validated(entry) for entry in entries])
             start = end
 
@@ -128,6 +129,9 @@ class TimeEntriesService:
 
     def _warn_local_copy(self, origin: TimeOrigin, problem: str, error: SourceError | None = None) -> None:
         sync = self._time_source_sync_repository.get_last_sync(origin)
-        local_copy = f'are a local copy from {sync.synced_at:%Y-%m-%d}' if sync else 'were never synced'
+        if sync:
+            local_copy = f'are a local copy from {sync.synced_at.astimezone(UTC):%Y-%m-%dT%H:%M:%SZ}'
+        else:
+            local_copy = 'were never synced'
         detail = f': {error}' if error else ''
         _logger.warning('%s %s, its time entries %s%s', origin.source, problem, local_copy, detail)

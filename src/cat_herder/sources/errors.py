@@ -1,5 +1,5 @@
 class SourceUnreachable(Exception):
-    """The source couldn't be reached: a DNS failure, a connect timeout or a TLS failure."""
+    """The source couldn't be reached, or stopped answering: a DNS, connection, TLS or proxy failure, or a timeout."""
 
 
 class SourceError(Exception):

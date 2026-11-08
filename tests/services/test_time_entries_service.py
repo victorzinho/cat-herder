@@ -123,7 +123,7 @@ def test_sync_syncs_the_time_sources_of_the_projects_given_whole(
 
 @pytest.mark.parametrize(('entry_id', 'ticket_key', 'flags'), [
     pytest.param('9001', 'SAT-7', set[TimeEntryFlag](), id='in-project'),
-    pytest.param('9003', None, set[TimeEntryFlag](), id='no-key'),
+    pytest.param('9003', None, set[TimeEntryFlag](), id='key-like-word'),
     pytest.param('9004', None, {TimeEntryFlag.SEVERAL_TICKETS}, id='several-keys'),
     pytest.param('9005', None, {TimeEntryFlag.TICKET_IN_OTHER_PROJECT}, id='in-another-project'),
     pytest.param('9006', None, {TimeEntryFlag.TICKET_NOT_FOUND}, id='missing-ticket'),
@@ -131,10 +131,12 @@ def test_sync_syncs_the_time_sources_of_the_projects_given_whole(
 def test_sync_validates_the_ticket_each_entry_refers_to(
     session: Session, toggl_api: TogglApi, entry_id: str, ticket_key: str | None, flags: set[TimeEntryFlag]
 ) -> None:
-    # GIVEN the SAT space synced with only SAT-7
+    # GIVEN the SAT space synced with only SAT-7, and a web project with tickets in WEB
     TicketRepository(session).save(new_ticket(key='SAT-7', space='SAT'), datetime.now(UTC))
     TicketSpaceSyncRepository(session).save('jira', 'SAT', datetime.now(UTC))
-    cut = _service(session, toggl_api)
+    web = Project(slug='web', tickets=TicketOrigin(source='jira', space='WEB'), time=None)
+    config = _config()
+    cut = _service(session, toggl_api, replace(config, projects=(*config.projects, web)))
 
     # WHEN
     cut.sync()
@@ -185,7 +187,9 @@ class _ReportedEntries:
     slug: str = 'toggl'
     max_fetch_days: int = 364
 
-    def fetch_time_entries(self, spaces: Collection[str], start: datetime, end: datetime) -> list[TimeEntry]:
+    def fetch_time_entries(
+        self, spaces: Collection[str], start: datetime, end: datetime, ticket_spaces: Collection[str]
+    ) -> list[TimeEntry]:
         return [entry for entry in self.entries if entry.space in spaces and start <= entry.start < end]
 
 

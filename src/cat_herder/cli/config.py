@@ -42,6 +42,8 @@ class WriteNotAllowed(Exception):
 def load_config(environ: Mapping[str, str]) -> Config:
     """Read and validate the config at CAT_HERDER_CONFIG, or at the default path, with `~` expanded.
 
+    Paths in it expand `~`, and relative ones are relative to the config's directory.
+
     Raises:
         ConfigError: if it can't be read, isn't YAML, breaks the schema, or refers to something it doesn't define.
     """
@@ -59,7 +61,7 @@ def load_config(environ: Mapping[str, str]) -> Config:
     problems = [f'{error.json_path}: {error.message}' for error in errors]
     if problems:
         raise ConfigError(_report(path, problems))
-    config = _build(document)
+    config = _build(document, path.parent)
     problems = _reference_problems(config)
     if problems:
         raise ConfigError(_report(path, problems))
@@ -76,14 +78,17 @@ def _report(path: Path, problems: list[str]) -> str:
     return '\n'.join(f'{path}: {problem}' for problem in sorted(problems))
 
 
-def _build(document: dict[str, Any]) -> Config:
+def _build(document: dict[str, Any], directory: Path) -> Config:
+    def path(value: str) -> Path:
+        return directory / Path(value).expanduser()
+
     return Config(
-        data_dir=Path(document['data_dir']).expanduser(),
+        data_dir=path(document['data_dir']),
         sources=tuple(_source(slug, source) for slug, source in document['sources'].items()),
         projects=tuple(_project(slug, project) for slug, project in document['projects'].items()),
         people=tuple(_person(slug, person) for slug, person in document.get('people', {}).items()),
         repositories=tuple(
-            Repository(slug=slug, path=Path(path)) for slug, path in document.get('repositories', {}).items()
+            Repository(slug=slug, path=path(value)) for slug, value in document.get('repositories', {}).items()
         ),
         default_non_ticket_percent=document.get('default_non_ticket_percent'),
         capacity_margin_hours=document.get('capacity_margin_hours', DEFAULT_CAPACITY_MARGIN_HOURS),

@@ -10,7 +10,7 @@ from cat_herder.domain.ticket import Sprint, SprintState, Ticket, key_order
 from cat_herder.sources.errors import SourceError, SourceUnreachable, TicketNotFound
 from cat_herder.sources.ticket_source import TicketSource
 from cat_herder.store.sprint_repository import SprintRepository
-from cat_herder.store.ticket_repository import StoredTicket, TicketRepository
+from cat_herder.store.ticket_repository import TicketRepository
 from cat_herder.store.ticket_space_sync_repository import TicketSpaceSyncRepository
 
 _logger = logging.getLogger(__name__)
@@ -20,14 +20,14 @@ CURRENT_SPRINT = 'current'
 
 
 class KeyNotResolved(Exception):
-    """The key isn't a ticket key, or is in several sources. The message says which."""
+    """The key isn't a ticket key, names a source that isn't a ticket one, or is in several. The message says which."""
 
 
 class TicketsService:
     """Reads answer from the local copy, after fetching into it when the source's window has passed.
 
-    If the source can't be reached, reads answer from the local copy and log a warning. Keys resolve from the config,
-    with the current git repository's projects breaking ties between sources.
+    If the source can't be reached or answers with an error, reads answer from the local copy and log a warning. Keys
+    resolve from the config, with the current git repository's projects breaking ties between sources.
 
     Writes need the source to be reachable, and store the ticket as the source has it after.
     """
@@ -50,7 +50,7 @@ class TicketsService:
         Raises:
             KeyNotResolved: if the key doesn't resolve to one source.
             SourceUnreachable: if the source can't be reached and the ticket isn't stored.
-            SourceError: if the source answers with any other error.
+            SourceError: if the source answers with any other error and the ticket isn't stored.
         """
         source, source_key = self._resolve(key)
         return self._read(source, source_key, force_fetch)
@@ -60,7 +60,7 @@ class TicketsService:
 
         A space is read whole the first time, and then for what changed since.
         One synced within its source's window is skipped.
-        If a source can't be reached, its spaces log a warning.
+        If a source can't be reached or answers with an error, its spaces log a warning.
 
         Args:
             force_fetch: re-read every space whole, deleting the local copy of tickets gone from it.
@@ -101,6 +101,19 @@ class TicketsService:
             source: the slug of the only source to look in. None looks in every source.
         """
         return self._sprint_repository.find(name, source)
+
+    def find_sprints_by_id(self, sprint_id: str, source: str | None = None) -> list[Sprint]:
+        """The stored sprints with that ID, ordered by source.
+
+        Args:
+            sprint_id: the sprint's ID in its source.
+            source: the slug of the only source to look in. None looks in every source.
+        """
+        return self._sprint_repository.find_by_id(sprint_id, source)
+
+    def sprint_names(self, source: str) -> dict[str, str]:
+        """The names of the source's stored sprints, by ID."""
+        return self._sprint_repository.names_by_id(source)
 
     def source_of(self, key: str) -> str:
         """The slug of the ticket source the key resolves to.
@@ -146,6 +159,8 @@ class TicketsService:
     def comment(self, key: str, body: str) -> None:
         """Add a comment, in markdown, to the ticket.
 
+        The ticket is then stored as the source has it, as far as the source can be reached.
+
         Raises:
             KeyNotResolved: if the key doesn't resolve to one source.
             SourceUnreachable: if the source can't be reached.
@@ -154,7 +169,8 @@ class TicketsService:
         """
         source, source_key = self._resolve(key)
         self._source_by_slug[source].add_comment(source_key, body)
-        self._fetch(source, source_key)
+        with suppress(SourceError, SourceUnreachable):
+            self._fetch(source, source_key)
 
     def _assignee_by_source(self, person_slug: str) -> dict[str, str]:
         person = self._config.person(person_slug)
@@ -173,6 +189,8 @@ class TicketsService:
         # returns the source and its own key
         source, separator, unqualified = key.rpartition(':')
         if separator:
+            if source not in self._config.ticket_sources():
+                raise KeyNotResolved(f'{source} is not a configured ticket source')
             return source, unqualified
 
         prefix, dash, number = key.rpartition('-')
@@ -201,10 +219,18 @@ class TicketsService:
 
         try:
             return self._fetch(source, key)
-        except SourceUnreachable:
-            return _local_copy(source, key, stored)
         except TicketNotFound:
             return None
+        except SourceUnreachable:
+            if not stored:
+                raise SourceUnreachable(f'{source} unreachable, and {key} has no local copy') from None
+            _warn_local_copy(source, 'unreachable', key, stored.fetched_at)
+            return stored.ticket
+        except SourceError as error:
+            if not stored:
+                raise
+            _warn_local_copy(source, 'failed', key, stored.fetched_at, error)
+            return stored.ticket
 
     def _fetch(self, source: str, key: str) -> Ticket:
         try:
@@ -227,8 +253,10 @@ class TicketsService:
         try:
             tickets = self._source_by_slug[source].fetch_tickets(space, updated_since)
         except SourceUnreachable:
-            local_copy = f'is a local copy from {synced_at:%Y-%m-%d}' if synced_at else 'was never synced'
-            _logger.warning('%s unreachable, %s %s', source, space, local_copy)
+            _warn_local_copy(source, 'unreachable', space, synced_at)
+            return
+        except SourceError as error:
+            _warn_local_copy(source, 'failed', space, synced_at, error)
             return
 
         if not updated_since:
@@ -240,9 +268,14 @@ class TicketsService:
         self._ticket_space_sync_repository.save(source, space, now)
 
 
-def _local_copy(source: str, key: str, stored: StoredTicket | None) -> Ticket:
-    if not stored:
-        raise SourceUnreachable(f'{source} unreachable, and {key} has no local copy')
-    _logger.warning('%s unreachable, %s is a local copy from %s', source, key, f'{stored.fetched_at:%Y-%m-%d}')
-    return stored.ticket
+def _warn_local_copy(
+    source: str, problem: str, read: str, copied_at: datetime | None, error: SourceError | None = None
+) -> None:
+    # read is the ticket or space read, and copied_at when its local copy is from, None if it has none.
+    if copied_at:
+        local_copy = f'is a local copy from {copied_at.astimezone(UTC):%Y-%m-%dT%H:%M:%SZ}'
+    else:
+        local_copy = 'was never synced'
+    detail = f': {error}' if error else ''
+    _logger.warning('%s %s, %s %s%s', source, problem, read, local_copy, detail)
 

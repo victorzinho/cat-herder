@@ -2,8 +2,8 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from cat_herder.domain.ticket import SprintState
-from tests.dates import october, parse
+from cat_herder.domain.ticket import Sprint, SprintState
+from tests.dates import october, parse, september
 from tests.factories import new_change, new_sprint, new_ticket
 
 
@@ -22,37 +22,37 @@ def test_as_of_undoes_the_changes_after_then() -> None:
     assert (as_of.status, as_of.points, as_of.estimated_hours, as_of.changes) == ('To do', 3, 4, ())
 
 
-def test_sprint_names_as_of_undoes_the_changes_to_sprints_after_then() -> None:
+def test_in_sprint_as_of_undoes_the_changes_to_sprints_after_then() -> None:
     # GIVEN added to Sprint 1 on the 1st, and carried over to Sprint 2 on the 3rd
-    sprints = (
-        new_sprint(id='1', name='Sprint 1'),
-        new_sprint(id='2', name='Sprint 2')
-    )
-    ticket = new_ticket(sprints=sprints, changes=(
-        new_change(field='sprints', before=None, after='Sprint 1', date=october(1)),
-        new_change(field='sprints', before='Sprint 1', after='Sprint 1, Sprint 2', date=october(3)),
+    sprint_1, sprint_2 = new_sprint(id='1', name='Sprint 1'), new_sprint(id='2', name='Sprint 2')
+    ticket = new_ticket(sprints=(sprint_1, sprint_2), changes=(
+        new_change(field='sprints', before=None, after='1', date=october(1)),
+        new_change(field='sprints', before='1', after='1, 2', date=october(3)),
     ))
 
     # WHEN
-    names = [ticket.sprint_names_as_of(day) for day in (october(2), october(4))]
+    held = [[ticket.in_sprint_as_of(each, day) for each in (sprint_1, sprint_2)] for day in (october(2), october(4))]
 
     # THEN
-    assert names == [{'Sprint 1'}, {'Sprint 1', 'Sprint 2'}]
+    assert held == [[True, False], [True, True]]
 
 
-@pytest.mark.parametrize(('name', 'expected'), [
-    pytest.param('Sprint 2', True, id='holds-it'),
-    pytest.param('Sprint 1', True, id='held-it'),
-    pytest.param('Sprint 3', False, id='never'),
+@pytest.mark.parametrize(('sprint', 'expected'), [
+    pytest.param(new_sprint(id='3', start=september(25)), True, id='held-at-its-start'),
+    pytest.param(new_sprint(id='3', start=october(5)), False, id='held-only-before-its-start'),
+    pytest.param(new_sprint(id='1', start=september(25), actual_end=october(10)), True, id='added-while-it-ran'),
+    pytest.param(new_sprint(id='2', state=SprintState.NOT_STARTED, start=october(20)), True, id='not-started-holds-it'),
 ])
-def test_was_in_sprint_says_whether_the_sprint_holds_or_ever_held_the_ticket(name: str, expected: bool) -> None:
-    # GIVEN moved from Sprint 1 to Sprint 2
-    ticket = new_ticket(sprints=(new_sprint(name='Sprint 2'),), changes=(
-        new_change(field='sprints', before='Sprint 1', after='Sprint 2'),
+def test_was_in_sprint_says_whether_the_sprint_held_the_ticket_while_it_ran(sprint: Sprint, expected: bool) -> None:
+    # GIVEN in sprint 3 from September 20th, moved to 1 on October 2nd, and to 2 on the 12th
+    ticket = new_ticket(sprints=(new_sprint(id='2'),), changes=(
+        new_change(field='sprints', before=None, after='3', date=september(20)),
+        new_change(field='sprints', before='3', after='1', date=october(2)),
+        new_change(field='sprints', before='1', after='2', date=october(12)),
     ))
 
     # WHEN / THEN
-    assert ticket.was_in_sprint(name) is expected
+    assert ticket.was_in_sprint(sprint) is expected
 
 
 @pytest.mark.parametrize(('actual_end', 'duration'), [

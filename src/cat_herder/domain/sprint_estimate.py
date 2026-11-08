@@ -14,7 +14,7 @@ def sprint_estimate(ticket: Ticket, sprint: Sprint, when: datetime, entries: Ite
     That's its estimate then, minus the hours logged on it before the sprint, all of them if the sprint has no start,
     and never below 0. 0 if the sprint didn't hold the ticket then, and None if it had no estimate.
     """
-    if sprint.name not in ticket.sprint_names_as_of(when):
+    if not ticket.in_sprint_as_of(sprint, when):
         return 0
     estimate = ticket.as_of(when).estimated_hours
     if estimate is None:

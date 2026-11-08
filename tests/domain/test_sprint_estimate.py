@@ -11,7 +11,7 @@ from tests.factories import new_change, new_sprint, new_ticket, new_time_entry
 @pytest.mark.parametrize(('sprint', 'estimated_hours', 'estimate'), [
     pytest.param(new_sprint(name='Sprint 1', start=parse('2026-10-05T09:00:00Z')), 10, 6, id='held'),
     pytest.param(new_sprint(name='Sprint 1', start=None), 10, 3, id='no-start'),
-    pytest.param(new_sprint(name='Sprint 9', start=parse('2026-10-05T09:00:00Z')), 10, 0, id='not-held'),
+    pytest.param(new_sprint(id='9', name='Sprint 9', start=parse('2026-10-05T09:00:00Z')), 10, 0, id='not-held'),
     pytest.param(new_sprint(name='Sprint 1', start=parse('2026-10-05T09:00:00Z')), None, None, id='no-estimate'),
 ])
 def test_sprint_estimate_leaves_out_the_hours_logged_before_the_sprint(

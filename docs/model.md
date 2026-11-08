@@ -44,7 +44,7 @@ Tickets have a closed set of fields, and only the config can add to it, as custo
 |---|---|
 | **Identity** | Source, key, project |
 | **Content** | Title, description (markdown), type, labels, components |
-| **Workflow** | Status, assignee, points, estimated hours, parent, sprints |
+| **Workflow** | Status, priority, assignee, points, estimated hours, parent, sprints |
 | **Dates** | Created, updated, fetched at |
 | **Attached** | Comments (author, date, markdown body), attachments |
 | **Custom** | Single-value fields named in the source's `custom_fields` |
@@ -85,6 +85,7 @@ Tickets have a closed set of fields, and only the config can add to it, as custo
 ## Sprints
 
 - A sprint has a name, a state (not started, in progress or ended) from the source, a start, a planned end and an actual end.
+- A sprint's tickets are those it held while it ran: at its start, or added before its actual end. Before it starts, those it holds.
 - A sprint's people are whoever has capacity or hours in one of its projects, plus, until it ends, whoever holds one of its tickets.
 - A sprint that hasn't ended has no actual end yet, so its window runs from its start.
 - A sprint's time left is all of it before it starts, up to its planned end while in progress, and none once it has ended.
@@ -92,7 +93,7 @@ Tickets have a closed set of fields, and only the config can add to it, as custo
 ## Time entries
 
 - An entry that names a sprint counts in that sprint.
-- Otherwise, hours on a ticket count in each sprint that holds or held that ticket, if the entry's date is between the sprint's start and actual end.
+- Otherwise, hours on a ticket count in each sprint that has it among its tickets, if the entry's date is between the sprint's start and actual end.
 - Otherwise, ticketless hours count if the entry's date is between the sprint's start and actual end, and the sprint holds tickets from the entry's project.
 - An entry outside every sprint's dates counts in no sprint unless it names one.
 - An entry inside two overlapping sprints counts in both, which is accepted for now.

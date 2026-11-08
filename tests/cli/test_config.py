@@ -42,6 +42,25 @@ def test_load_config_reads_the_config_path(
     assert str(error_info.value) == f'{Path(expected_path).expanduser()}: No such file or directory'
 
 
+def test_load_config_reads_relative_paths_from_the_configs_directory(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    # GIVEN the config in tmp_path/config, run from elsewhere
+    (tmp_path / 'config').mkdir()
+    (tmp_path / 'elsewhere').mkdir()
+    monkeypatch.chdir(tmp_path / 'elsewhere')
+    config_path = tmp_path / 'config' / 'config.yaml'
+    cli_config = (Path(__file__).parents[1] / 'resources' / 'cli' / 'config.yaml').read_text()
+    config_path.write_text(f'{cli_config}repositories:\n  sat: ../sat\n')
+
+    # WHEN
+    config = load_config({CONFIG_PATH_ENV: str(config_path)})
+
+    # THEN
+    assert config.data_dir.resolve() == tmp_path / 'config' / 'data'
+    assert config.repositories[0].path.resolve() == tmp_path / 'sat'
+
+
 def test_load_config_builds_every_option() -> None:
     # WHEN
     config = load_config({CONFIG_PATH_ENV: str(RESOURCES / 'every-option.yaml')})

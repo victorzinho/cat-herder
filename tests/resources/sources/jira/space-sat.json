@@ -5,6 +5,7 @@
       "key": "SAT-7",
       "fields": {
         "summary": "Retry failed meteo imports",
+        "priority": {"id": "2", "name": "High"},
         "status": {
           "id": "3",
           "name": "In progress"

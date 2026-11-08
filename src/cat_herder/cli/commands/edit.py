@@ -42,7 +42,8 @@ def run(args: argparse.Namespace, config: Config, environ: Mapping[str, str], cw
             for name in document.get('sprints', [])
             if (sprints := tickets_service.find_sprints(name, ticket.source))
         } | {sprint.name: sprint for sprint in ticket.sprints}
-        edited = edited_ticket(document, ticket, config, sprint_by_name)
+        sprint_names = tickets_service.sprint_names(ticket.source)
+        edited = edited_ticket(document, ticket, config, sprint_by_name, sprint_names)
         try:
             tickets_service.edit(edited)
         except WriteIncomplete as error:

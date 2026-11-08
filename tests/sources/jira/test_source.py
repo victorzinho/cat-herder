@@ -46,6 +46,7 @@ def test_fetch_ticket_maps_the_issue_with_every_page_of_what_it_mentions() -> No
         title='Retry failed meteo imports',
         type='Task',
         status='In progress',
+        priority='High',
         created=parse('2026-10-12T09:30:00Z'),
         updated=parse('2026-10-28T16:05:00Z'),
         description='The import fails **silently** when the provider times out.',
@@ -110,7 +111,7 @@ def test_fetch_ticket_maps_the_issue_with_every_page_of_what_it_mentions() -> No
             new_change(field='assignee', author='account-ana', before=None, after='account-ana', date=ANA_EDIT),
             new_change(field='estimated_hours', author='account-victor', before='10', after='5', date=VICTOR_EDIT),
             new_change(field='points', author='account-victor', before='10', after='5', date=VICTOR_EDIT),
-            new_change(field='sprints', author='account-victor', before=None, after='All Sprint 1', date=VICTOR_EDIT),
+            new_change(field='sprints', author='account-victor', before=None, after='42', date=VICTOR_EDIT),
             new_change(field='custom_fields.size', author='account-victor', before='🌋', after='🔥', date=VICTOR_EDIT),
             new_change(field='parent', author='account-victor', before=None, after='SAT-2', date=VICTOR_EDIT),
             new_change(
@@ -152,7 +153,7 @@ def _jira_api_raising(error: type[httpx.TransportError]) -> Callable[[httpx.Requ
         pytest.param(_jira_api_answering(401), SourceError, id='http-error'),
         pytest.param(_jira_api_raising(httpx.ConnectError), SourceUnreachable, id='connect-error'),
         pytest.param(_jira_api_raising(httpx.ConnectTimeout), SourceUnreachable, id='connect-timeout'),
-        pytest.param(_jira_api_raising(httpx.ReadTimeout), SourceError, id='read-timeout'),
+        pytest.param(_jira_api_raising(httpx.ReadTimeout), SourceUnreachable, id='read-timeout'),
     ],
 )
 def test_fetch_ticket_raises_source_exceptions(

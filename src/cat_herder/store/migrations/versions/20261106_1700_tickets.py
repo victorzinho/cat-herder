@@ -21,6 +21,7 @@ def upgrade() -> None:
             description VARCHAR,
             labels JSON,
             components JSON,
+            priority VARCHAR,
             assignee VARCHAR,
             points DOUBLE,
             estimated_hours DOUBLE,

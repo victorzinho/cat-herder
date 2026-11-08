@@ -52,7 +52,7 @@ class JiraClient:
         self._auth = self._auth or httpx.BasicAuth(*self._credentials())
         try:
             response = self._http.send(request, auth=self._auth)
-        except (httpx.ConnectError, httpx.ConnectTimeout) as error:
+        except (httpx.NetworkError, httpx.TimeoutException, httpx.ProxyError) as error:
             raise SourceUnreachable(f'{described}: {error}') from error
         except httpx.HTTPError as error:
             raise SourceError(f'{described}: {error!r}') from error

@@ -29,7 +29,10 @@ def cli_environment(jira_api: JiraApi, toggl_api: TogglApi, tmp_path: Path, monk
         return toggl_api(request) if request.url.host == TOGGL_HOST else jira_api(request)
 
     monkeypatch.setattr(httpx.HTTPTransport, 'handle_request', handle_request)
-    monkeypatch.setenv('CAT_HERDER_CONFIG', str(RESOURCES / 'config.yaml'))
+    # Its data_dir is relative to it.
+    config = tmp_path / 'config.yaml'
+    config.write_text((RESOURCES / 'config.yaml').read_text())
+    monkeypatch.setenv('CAT_HERDER_CONFIG', str(config))
     monkeypatch.setenv('JIRA_EMAIL', 'ana@example.com')
     monkeypatch.setenv('JIRA_TOKEN', 'token')
     monkeypatch.setenv('TOGGL_TOKEN', 'token')

@@ -5,8 +5,8 @@ from enum import StrEnum
 
 type CustomValue = str | float | None
 
-# How a Change to sprints joins the names of the sprints holding the ticket.
-_SPRINT_NAMES_SEPARATOR = ', '
+# How a Change to sprints joins the IDs of the sprints holding the ticket.
+_SPRINT_IDS_SEPARATOR = ','
 
 
 class TicketState(StrEnum):
@@ -105,7 +105,11 @@ class Link:
 
 @dataclass(frozen=True, kw_only=True)
 class Change:
-    """One change to one of our fields, or to a link. Values are as the source words them."""
+    """One change to one of our fields, or to a link.
+
+    Values are as the source words them, except an assignee's and sprints', which are the source's IDs for them,
+    comma-separated for sprints, as sprint_ids reads them.
+    """
 
     field: str
     author: str | None
@@ -132,6 +136,7 @@ class Ticket:
     description: str | None = None
     labels: tuple[str, ...] = ()
     components: tuple[str, ...] = ()
+    priority: str | None = None
     assignee: str | None = None
     points: float | None = None
     estimated_hours: float | None = None
@@ -169,23 +174,28 @@ class Ticket:
         changes = self.changes[: len(self.changes) - len(later)]
         return replace(self, status=status, points=points, estimated_hours=estimated_hours, changes=changes)
 
-    def sprint_names_as_of(self, when: datetime) -> set[str]:
-        """Names of the sprints holding the ticket then."""
-        names = {sprint.name for sprint in self.sprints}
+    def in_sprint_as_of(self, sprint: Sprint, when: datetime) -> bool:
+        """Whether the sprint held the ticket then."""
+        ids = {each.id for each in self.sprints}
         for change in reversed(self.changes):
             if change.date <= when:
                 break
             if change.field == 'sprints':
-                names = _sprint_names(change.before)
-        return names
+                ids = set(sprint_ids(change.before))
+        return sprint.source == self.source and sprint.id in ids
 
-    def was_in_sprint(self, name: str) -> bool:
-        """Whether the sprint with that name holds or ever held the ticket."""
-        return name in {sprint.name for sprint in self.sprints} or any(
-            name in _sprint_names(change.before) | _sprint_names(change.after)
+    def was_in_sprint(self, sprint: Sprint) -> bool:
+        """Whether the sprint held the ticket while it ran: at its start, or added before its actual end.
+
+        A sprint that hasn't started, or has no start, holds the tickets it holds now.
+        """
+        if sprint.state is SprintState.NOT_STARTED or not sprint.start:
+            return sprint.source == self.source and sprint.id in {each.id for each in self.sprints}
+        added = any(
+            change.field == 'sprints' and sprint.covers(change.date) and sprint.id in sprint_ids(change.after)
             for change in self.changes
-            if change.field == 'sprints'
         )
+        return self.in_sprint_as_of(sprint, sprint.start) or (sprint.source == self.source and added)
 
 
 def key_order(key: str) -> tuple[str | int, ...]:
@@ -197,5 +207,6 @@ def _number(value: str | None) -> float | None:
     return float(value) if value else None
 
 
-def _sprint_names(value: str | None) -> set[str]:
-    return set(value.split(_SPRINT_NAMES_SEPARATOR)) if value else set()
+def sprint_ids(value: str | None) -> tuple[str, ...]:
+    """The sprint IDs in a Change to sprints' value."""
+    return tuple(each.strip() for each in (value or '').split(_SPRINT_IDS_SEPARATOR) if each.strip())

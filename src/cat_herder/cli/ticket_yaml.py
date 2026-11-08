@@ -9,7 +9,7 @@ from jsonschema import Draft202012Validator
 
 from cat_herder.cli.yaml_format import NO_TIME_SOURCE, Block, dump, hours, load, number, timestamp
 from cat_herder.domain.config import Config, TicketOrigin
-from cat_herder.domain.ticket import Change, Comment, Link, Sprint, Ticket, TicketSummary
+from cat_herder.domain.ticket import Change, Comment, Link, Sprint, Ticket, TicketSummary, sprint_ids
 
 _SCHEMA: dict[str, Any] = yaml.safe_load(files('cat_herder.cli').joinpath('schemas', 'ticket.schema.yaml').read_text())
 _VALIDATOR = Draft202012Validator(_SCHEMA, format_checker=Draft202012Validator.FORMAT_CHECKER)
@@ -27,13 +27,15 @@ def ticket_to_yaml(
     config: Config,
     spent_hours: float | None = None,
     brief: bool = False,
-    changes: bool = False
+    changes: bool = False,
+    sprint_names: Mapping[str, str] | None = None,
 ) -> str:
     """The ticket in the ticket schema's shape. brief leaves out comments and attachments; changes adds Changes.
 
-    The key is qualified, as in jira:SAT-7, when its space is in several ticket sources.
+    The key is qualified, as in jira:SAT-7, when its space is in several ticket sources. Changes name sprints by
+    sprint_names, the source's sprint names by ID, or by ID if missing there.
     """
-    return dump(_shown(ticket, config, spent_hours, brief, changes))
+    return dump(_shown(ticket, config, spent_hours, brief, changes, sprint_names or {}))
 
 
 def tickets_to_yaml(tickets: Iterable[Ticket], config: Config) -> str:
@@ -107,6 +109,7 @@ def new_ticket(
         title=document.get('title', ''),
         type=document.get('type', ''),
         status=document.get('status', ''),
+        priority=document.get('priority'),
         created=now,
         updated=now,
         description=document.get('description'),
@@ -130,6 +133,7 @@ def edited_ticket(
     ticket: Ticket,
     config: Config,
     sprint_by_name: Mapping[str, Sprint],
+    sprint_names: Mapping[str, str],
 ) -> Ticket:
     """The ticket with the fields in the document that differ from it.
 
@@ -138,12 +142,13 @@ def edited_ticket(
         ticket: the ticket as its source has it.
         config: the people and projects to read the document with.
         sprint_by_name: the source's sprints that the document can name.
+        sprint_names: the source's sprint names by ID, which its Changes are shown with.
 
     Raises:
         TicketYamlError: if a read-only field differs, or the document names a person, sprint or custom field
             that can't be written.
     """
-    shown = _shown(ticket, config, spent_hours=None, brief=False, changes=True)
+    shown = _shown(ticket, config, spent_hours=None, brief=False, changes=True, sprint_names=sprint_names)
     different = {
         name: value
         for name, value in document.items()
@@ -173,7 +178,14 @@ def edited_ticket(
     return replace(ticket, **values)
 
 
-def _shown(ticket: Ticket, config: Config, spent_hours: float | None, brief: bool, changes: bool) -> dict[str, Any]:
+def _shown(
+    ticket: Ticket,
+    config: Config,
+    spent_hours: float | None,
+    brief: bool,
+    changes: bool,
+    sprint_names: Mapping[str, str],
+) -> dict[str, Any]:
     project = config.project_of_ticket(ticket)
     document: dict[str, Any] = {
         'key': _key(config, ticket),
@@ -181,6 +193,7 @@ def _shown(ticket: Ticket, config: Config, spent_hours: float | None, brief: boo
         'project': project.slug if project else None,
         'type': ticket.type,
         'status': ticket.status,
+        'priority': ticket.priority,
         'assignee': config.person_name(ticket.source, ticket.assignee) if ticket.assignee else None,
         'points': number(ticket.points),
         'estimated_hours': number(ticket.estimated_hours),
@@ -208,7 +221,8 @@ def _shown(ticket: Ticket, config: Config, spent_hours: float | None, brief: boo
             for attachment in ticket.attachments
         ]
     if changes:
-        document['changes'] = [_change(config, ticket.source, change) for change in ticket.changes]
+        names = dict(sprint_names) | {sprint.id: sprint.name for sprint in ticket.sprints}
+        document['changes'] = [_change(config, ticket.source, change, names) for change in ticket.changes]
     return document
 
 
@@ -285,6 +299,7 @@ def _listed(config: Config, ticket: Ticket) -> dict[str, Any]:
         'project': project.slug if project else None,
         'type': ticket.type,
         'status': ticket.status,
+        'priority': ticket.priority,
         'assignee': config.person_name(ticket.source, ticket.assignee) if ticket.assignee else None,
         'points': number(ticket.points),
         'estimated_hours': number(ticket.estimated_hours),
@@ -323,11 +338,14 @@ def _comment(config: Config, source: str, comment: Comment) -> Block:
     return Block(author=config.person_name(source, comment.author), date=timestamp(comment.created), body=comment.body)
 
 
-def _change(config: Config, source: str, change: Change) -> Block:
+def _change(config: Config, source: str, change: Change, sprint_names: Mapping[str, str]) -> Block:
     before, after = change.before, change.after
     if change.field == 'assignee':
         before = config.person_name(source, before) if before else None
         after = config.person_name(source, after) if after else None
+    if change.field == 'sprints':
+        before = ', '.join(sprint_names.get(each, each) for each in sprint_ids(before)) or None
+        after = ', '.join(sprint_names.get(each, each) for each in sprint_ids(after)) or None
     return Block(
         {
             'field': change.field,

@@ -11,7 +11,7 @@ description: |
     Each field provided is compared with the current ticket: if it's the same, nothing is sent;
     if it's different, it's sent to the source, or it explodes if it's `readOnly`.
 
-  Allowed values for `type`, `status` and `links.relation` come from the source. A value the source
+  Allowed values for `type`, `status`, `priority` and `links.relation` come from the source. A value the source
   doesn't accept is a source error.
 
   Source and fetched at are stored but not part of this format.
@@ -33,6 +33,9 @@ properties:
   status:
     type: string
     description: The source's name for the status, with no translation.
+  priority:
+    type: [string, 'null']
+    description: The source's name for the priority, with no translation. Left out when creating, the source's default.
   assignee:
     type: [string, 'null']
     description: Person slug. `unknown (<source ID>)` when the source's user has no entry in `people`, which can't be written.
@@ -208,6 +211,7 @@ examples:
     project: sat
     type: Task
     status: In progress
+    priority: High
     assignee: ana
     points: 5
     estimated_hours: 5

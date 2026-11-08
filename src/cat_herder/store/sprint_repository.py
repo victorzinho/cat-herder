@@ -48,6 +48,23 @@ class SprintRepository:
             query = query.where(SprintRow.source == source)
         return [sprint_to_domain(row) for row in self._session.scalars(query.order_by(SprintRow.source))]
 
+    def find_by_id(self, sprint_id: str, source: str | None = None) -> list[Sprint]:
+        """The sprints with that ID in their source, ordered by source.
+
+        Args:
+            sprint_id: the sprint's ID in its source.
+            source: the slug of the only source to look in. None looks in every source.
+        """
+        query = select(SprintRow).where(SprintRow.source_id == sprint_id)
+        if source:
+            query = query.where(SprintRow.source == source)
+        return [sprint_to_domain(row) for row in self._session.scalars(query.order_by(SprintRow.source))]
+
+    def names_by_id(self, source: str) -> dict[str, str]:
+        """The names of the source's sprints, by ID."""
+        rows = self._session.execute(select(SprintRow.source_id, SprintRow.name).where(SprintRow.source == source))
+        return {sprint_id: name for sprint_id, name in rows}
+
     def find_ended(self, source: str) -> list[Sprint]:
         """The source's ended sprints, the last to end first."""
         query = select(SprintRow).where(SprintRow.source == source, SprintRow.state == SprintState.ENDED.value)

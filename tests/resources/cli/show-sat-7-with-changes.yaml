@@ -3,6 +3,7 @@ title: Retry failed meteo imports
 project: sat
 type: Task
 status: In progress
+priority: High
 assignee: ana
 points: 5
 estimated_hours: 5

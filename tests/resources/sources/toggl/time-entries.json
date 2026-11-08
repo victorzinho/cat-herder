@@ -51,7 +51,7 @@
     "project_id": 101,
     "task_id": null,
     "billable": false,
-    "description": "Planning",
+    "description": "Planning the UTF-8 fix",
     "tag_ids": [],
     "billable_amount_in_cents": null,
     "hourly_rate_in_cents": null,

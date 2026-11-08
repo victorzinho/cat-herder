@@ -7,11 +7,28 @@ from pathlib import Path
 
 from cat_herder.cli.commands import comment, create, edit, report, show, sync
 from cat_herder.cli.commands import list as list_command
-from cat_herder.cli.config import load_config
+from cat_herder.cli.config import ConfigError, WriteNotAllowed, load_config
+from cat_herder.cli.ticket_yaml import TicketYamlError
+from cat_herder.services.tickets_service import KeyNotResolved
+from cat_herder.sources.errors import CredentialsMissing, SourceError, SourceUnreachable
+
+# Errors in what the tool was given or met, reported as a message. Any other is a bug, and shows its traceback.
+_REPORTED_ERRORS = (
+    ConfigError,
+    CredentialsMissing,
+    KeyNotResolved,
+    OSError,
+    SourceError,
+    SourceUnreachable,
+    TicketYamlError,
+    WriteNotAllowed,
+)
 
 
 def main(argv: list[str] | None = None) -> int:
     """Run the cat-herder command line; argv defaults to sys.argv. Warnings and errors go to stderr.
+
+    Errors in _REPORTED_ERRORS print their message and return 1; any other propagates.
 
     Returns:
         The exit code.
@@ -59,7 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         config = load_config(os.environ)
         return args.run(args, config, os.environ, Path.cwd())
-    except Exception as error:
+    except _REPORTED_ERRORS as error:
         print(f'cat-herder: {error}', file=sys.stderr)
         return 1
     finally:

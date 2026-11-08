@@ -37,6 +37,7 @@ class TicketRow(Base):
     description: Mapped[str | None]
     labels: Mapped[list[str] | None]
     components: Mapped[list[str] | None]
+    priority: Mapped[str | None]
     assignee: Mapped[str | None]
     points: Mapped[float | None]
     estimated_hours: Mapped[float | None]
@@ -228,6 +229,7 @@ def _ticket_from_rows(row: TicketRow, links: Sequence[LinkRow]) -> Ticket:
         description=row.description,
         labels=tuple(row.labels or ()),
         components=tuple(row.components or ()),
+        priority=row.priority,
         assignee=row.assignee,
         points=row.points,
         estimated_hours=row.estimated_hours,
@@ -252,6 +254,7 @@ def _update_ticket_row(row: TicketRow, ticket: Ticket) -> None:
     row.description = ticket.description
     row.labels = list(ticket.labels)
     row.components = list(ticket.components)
+    row.priority = ticket.priority
     row.assignee = ticket.assignee
     row.points = ticket.points
     row.estimated_hours = ticket.estimated_hours

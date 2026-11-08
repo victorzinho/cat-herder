@@ -37,10 +37,14 @@ def run(args: argparse.Namespace, config: Config, environ: Mapping[str, str], cw
         time_entries_service = TimeEntriesService(config, session, build_time_sources(config, environ))
         ticket = tickets_service.show(args.key, force_fetch=args.force_fetch)
         spent_hours = time_entries_service.spent_hours(ticket) if ticket else None
+        sprint_names = tickets_service.sprint_names(ticket.source) if ticket and args.changes else {}
 
     if not ticket:
         print(f'cat-herder: {args.key} is not in its source', file=sys.stderr)
         return 1
 
-    print(ticket_to_yaml(ticket, config, spent_hours, brief=args.brief, changes=args.changes), end='')
+    output = ticket_to_yaml(
+        ticket, config, spent_hours, brief=args.brief, changes=args.changes, sprint_names=sprint_names
+    )
+    print(output, end='')
     return 0

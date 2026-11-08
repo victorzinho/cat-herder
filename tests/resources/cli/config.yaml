@@ -1,4 +1,4 @@
-# The tests run from a temporary directory, which holds data_dir.
+# The tests copy it to a temporary directory, which then holds data_dir.
 data_dir: data
 sources:
   jira:

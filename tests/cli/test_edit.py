@@ -12,10 +12,11 @@ from tests.jira_api import JiraApi
 def test_edit_writes_only_the_fields_that_differ_from_the_ticket(
     jira_api: JiraApi, tmp_path: Path, capsys: CaptureFixture[str]
 ) -> None:
-    # GIVEN SAT-7 as show prints it, with a new title, size and sprints
+    # GIVEN SAT-7 as show prints it, with a new title, priority, size and sprints
     main(['show', 'SAT-7'])
     document = yaml.safe_load(capsys.readouterr().out)
-    document |= {'title': 'Retry meteo imports', 'custom_fields': {'size': '🕯️'}, 'sprints': ['All Sprint 1']}
+    document |= {'title': 'Retry meteo imports', 'priority': 'Highest', 'custom_fields': {'size': '🕯️'}}
+    document |= {'sprints': ['All Sprint 1']}
     edited = tmp_path / 'sat-7.yaml'
     edited.write_text(yaml.safe_dump(document, allow_unicode=True))
     jira_api.requests.clear()
@@ -26,7 +27,12 @@ def test_edit_writes_only_the_fields_that_differ_from_the_ticket(
     # THEN
     assert (exit_code, capsys.readouterr()) == (0, ('', ''))
     assert jira_api.writes() == [('PUT', 'issue/SAT-7', {
-        'fields': { 'summary': 'Retry meteo imports', 'customfield_10043': {'value': '🕯️'}, 'customfield_10020': None },
+        'fields': {
+            'summary': 'Retry meteo imports',
+            'priority': {'name': 'Highest'},
+            'customfield_10043': {'value': '🕯️'},
+            'customfield_10020': None,
+        },
         'update': {},
     })]
 

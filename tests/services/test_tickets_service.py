@@ -117,7 +117,24 @@ def test_show_answers_from_the_local_copy_with_a_warning_when_unreachable(
     # THEN
     assert ticket
     assert ticket == STORED_SAT_7
-    assert caplog.messages == ['jira unreachable, SAT-7 is a local copy from 2026-10-30']
+    assert caplog.messages == ['jira unreachable, SAT-7 is a local copy from 2026-10-30T09:00:00Z']
+
+
+def test_show_answers_from_the_local_copy_with_a_warning_when_jira_answers_with_an_error(
+    session: Session, jira_api: JiraApi, caplog: pytest.LogCaptureFixture
+) -> None:
+    # GIVEN SAT-7 stored on 2026-10-30, and Jira rejecting it
+    _save_in_local_copy(session, STORED_SAT_7, parse('2026-10-30T09:00:00Z'))
+    jira_api.rejecting.add('GET issue/SAT-7')
+    cut = _service(session, jira_api)
+
+    # WHEN
+    ticket = cut.show('SAT-7')
+
+    # THEN
+    assert ticket == STORED_SAT_7
+    assert caplog.messages[0].startswith('jira failed, SAT-7 is a local copy from 2026-10-30T09:00:00Z: GET ')
+    assert caplog.messages[0].endswith('HTTP 400 Rejected')
 
 
 def test_show_raises_when_unreachable_and_not_stored(session: Session, jira_api: JiraApi) -> None:
@@ -272,6 +289,23 @@ def test_sync_warns_when_a_source_is_unreachable(session: Session, jira_api: Jir
     assert caplog.messages == ['jira unreachable, SAT was never synced']
 
 
+def test_sync_warns_and_keeps_the_local_copy_when_a_source_answers_with_an_error(
+    session: Session, jira_api: JiraApi, caplog: pytest.LogCaptureFixture
+) -> None:
+    # GIVEN SAT synced once, and Jira rejecting searches since
+    cut = _service(session, jira_api)
+    cut.sync(project_slugs=['sat'])
+    synced_at = TicketSpaceSyncRepository(session).get_last_sync('jira', 'SAT')
+    jira_api.rejecting.add('POST search/jql')
+
+    # WHEN
+    tickets = cut.list_tickets(project_slugs=['sat'], force_fetch=True)
+
+    # THEN
+    assert [ticket.key for ticket in tickets] == ['SAT-7', 'SAT-8', 'SAT-10']
+    assert caplog.messages[0].startswith(f'jira failed, SAT is a local copy from {synced_at:%Y-%m-%dT%H:%M:%SZ}: POST ')
+
+
 @pytest.mark.parametrize(('filters', 'keys'), [
     pytest.param({'project_slugs': ['sat']}, ['SAT-7', 'SAT-8', 'SAT-10'], id='project'),
     pytest.param({'statuses': ['To do', 'Done']}, ['SAT-8', 'SAT-10'], id='any-of-several-statuses'),
@@ -301,6 +335,7 @@ def test_list_tickets_answers_from_the_local_copy_when_unreachable(
     # GIVEN SAT listed once, and Jira unreachable since
     cut = _service(session, jira_api)
     cut.list_tickets(project_slugs=['sat'])
+    synced_at = TicketSpaceSyncRepository(session).get_last_sync('jira', 'SAT')
     jira_api.reachable = False
 
     # WHEN
@@ -308,7 +343,7 @@ def test_list_tickets_answers_from_the_local_copy_when_unreachable(
 
     # THEN
     assert [ticket.key for ticket in tickets] == ['SAT-7', 'SAT-8', 'SAT-10']
-    assert caplog.messages == [f'jira unreachable, SAT is a local copy from {datetime.now(UTC):%Y-%m-%d}']
+    assert caplog.messages == [f'jira unreachable, SAT is a local copy from {synced_at:%Y-%m-%dT%H:%M:%SZ}']
 
 
 @pytest.mark.parametrize(('source', 'sources'), [
@@ -393,6 +428,19 @@ def test_comment_adds_it_and_stores_the_ticket_as_the_source_has_it(session: Ses
     # THEN
     assert [write[:2] for write in jira_api.writes()] == [('POST', 'issue/SAT-7/comment')]
     assert TicketRepository(session).get('jira', 'SAT-7')
+
+
+def test_comment_succeeds_when_storing_the_ticket_after_fails(session: Session, jira_api: JiraApi) -> None:
+    # GIVEN Jira failing to read SAT-7 back
+    cut = _service(session, jira_api)
+    jira_api.rejecting.add('GET issue/SAT-7')
+
+    # WHEN
+    cut.comment('SAT-7', 'Done')
+
+    # THEN
+    assert [write[:2] for write in jira_api.writes()] == [('POST', 'issue/SAT-7/comment')]
+    assert not TicketRepository(session).get('jira', 'SAT-7')
 
 
 def test_source_of_resolves_the_key_to_its_source(session: Session) -> None:

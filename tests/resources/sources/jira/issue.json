@@ -4,6 +4,7 @@
   "fields": {
     "summary": "Retry failed meteo imports",
     "status": {"id": "3", "name": "In progress"},
+    "priority": {"id": "2", "name": "High"},
     "issuetype": {"id": "10006", "name": "Task", "subtask": false},
     "project": {"id": "10002", "key": "SAT", "name": "Satellite"},
     "created": "2026-10-12T11:30:00.000+0200",

@@ -7,7 +7,7 @@ def current_git_repository(config: Config, cwd: Path) -> str | None:
     """The slug of the configured git repository cwd is in, counting a worktree as its main repository."""
     if not (root := _main_git_repository_root(cwd)):
         return None
-    return next((repo.slug for repo in config.repositories if repo.path.expanduser().resolve() == root), None)
+    return next((repo.slug for repo in config.repositories if repo.path.resolve() == root), None)
 
 
 def _main_git_repository_root(cwd: Path) -> Path | None:

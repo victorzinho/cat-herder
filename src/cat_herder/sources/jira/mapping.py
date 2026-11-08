@@ -26,6 +26,7 @@ TICKET_FIELDS = (
     'description',
     'labels',
     'components',
+    'priority',
     'assignee',
     'parent',
     'issuelinks',
@@ -44,6 +45,7 @@ _FIELD_BY_ID = {
     'summary': 'title',
     'status': 'status',
     'issuetype': 'type',
+    'priority': 'priority',
     'assignee': 'assignee',
     'labels': 'labels',
     'components': 'components',
@@ -70,6 +72,7 @@ def ticket(
     description: JsonObject | None = fields.get('description')
     assignee: JsonObject | None = fields.get('assignee')
     parent: JsonObject | None = fields.get('parent')
+    priority: JsonObject | None = fields.get('priority')
     estimate: int | None = fields.get('timeoriginalestimate')
     sprints: list[JsonObject] = (fields.get(config.sprints_field) or []) if config.sprints_field else []
     links: list[Link] = []
@@ -89,6 +92,7 @@ def ticket(
         description=(adf_to_markdown(description) or None) if description else None,
         labels=tuple(fields.get('labels', [])),
         components=tuple(component['name'] for component in fields.get('components', [])),
+        priority=priority['name'] if priority else None,
         assignee=assignee['accountId'] if assignee else None,
         points=fields.get(config.points_field) if config.points_field else None,
         estimated_hours=estimate / 3600 if estimate is not None else None,
@@ -194,7 +198,7 @@ def _changes(config: JiraSourceConfig, histories: list[JsonObject]) -> list[Chan
 
 def _change_values(field: str, item: JsonObject) -> tuple[str | None, str | None]:
     match field:
-        case 'assignee':
+        case 'assignee' | 'sprints':
             return item.get('from') or None, item.get('to') or None
         case 'estimated_hours':
             return _hours(item.get('from')), _hours(item.get('to'))

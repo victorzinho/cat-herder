@@ -100,7 +100,7 @@ class SprintPlanningService:
         entries_in_sprint = _entries_in_sprint(sprint, tickets, entries) if entries is not None else None
         rows = tuple(
             self._sprint_ticket(sprint, as_of, ticket, entries, entries_in_sprint)
-            for ticket in tickets if ticket.was_in_sprint(sprint.name)
+            for ticket in tickets if ticket.was_in_sprint(sprint)
         )
         hours = Hours.of_nullable(entries_in_sprint)
         hours_by_person = self._hours_by_person(entries_in_sprint)
@@ -184,7 +184,7 @@ class SprintPlanningService:
             estimate=sprint_estimate(ticket, sprint, as_of, entries or ()),
             reestimated_by=reestimated_by(ticket, sprint, as_of, entries or ()),
             hours=None if counted is None else sum(entry.hours for entry in counted if entry.ticket_key == ticket.key),
-            outcome=_outcome(sprint, source, then) if sprint.name in ticket.sprint_names_as_of(as_of) else None,
+            outcome=_outcome(sprint, source, then) if ticket.in_sprint_as_of(sprint, as_of) else None,
             blocked_by=source.open_blockers(ticket),
         )
 
@@ -206,13 +206,13 @@ class SprintPlanningService:
 
 
 def _takes_part_in_sprint(sprint: Sprint, tickets: Iterable[Ticket], entries: Iterable[TimeEntry]) -> bool:
-    any_ticket_in_sprint = any(ticket.was_in_sprint(sprint.name) for ticket in tickets)
+    any_ticket_in_sprint = any(ticket.was_in_sprint(sprint) for ticket in tickets)
     any_entry_in_sprint = any(entry.sprint == sprint.name for entry in entries)
     return any_ticket_in_sprint or any_entry_in_sprint
 
 
 def _entries_in_sprint(sprint: Sprint, tickets: Iterable[Ticket], entries: Iterable[TimeEntry]) -> list[TimeEntry]:
-    keys = {ticket.key for ticket in tickets if ticket.was_in_sprint(sprint.name)}
+    keys = {ticket.key for ticket in tickets if ticket.was_in_sprint(sprint)}
     return [entry for entry in entries if entry.counts_in_sprint(sprint, keys)]
 
 

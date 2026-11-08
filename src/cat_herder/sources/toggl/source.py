@@ -33,7 +33,9 @@ class TogglSource:
     def max_fetch_days(self) -> int:
         return MAX_FETCH_DAYS
 
-    def fetch_time_entries(self, spaces: Collection[str], start: datetime, end: datetime) -> list[TimeEntry]:
+    def fetch_time_entries(
+        self, spaces: Collection[str], start: datetime, end: datetime, ticket_spaces: Collection[str]
+    ) -> list[TimeEntry]:
         space_by_project_id = {self._project_id(space): space for space in spaces}
         body: JsonObject = {
             'project_ids': list(space_by_project_id),
@@ -42,7 +44,7 @@ class TogglSource:
             'page_size': SEARCH_PAGE_SIZE,
         }
         return [
-            mapping.time_entry(self._config, row, entry, space_by_project_id[row['project_id']])
+            mapping.time_entry(self._config, row, entry, space_by_project_id[row['project_id']], ticket_spaces)
             for row in self._search(body)
             for entry in row['time_entries']
             if entry['stop'] and start <= datetime.fromisoformat(entry['start']) < end

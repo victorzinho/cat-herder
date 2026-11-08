@@ -18,6 +18,7 @@ PAGE_SIZE = 100
 _FIELDS = (
     'title',
     'type',
+    'priority',
     'assignee',
     'points',
     'estimated_hours',
@@ -167,6 +168,8 @@ class JiraSource:
                     fields['summary'] = edited.title
                 case 'type':
                     fields['issuetype'] = {'name': edited.type}
+                case 'priority':
+                    fields['priority'] = {'name': edited.priority} if edited.priority else None
                 case 'assignee':
                     fields['assignee'] = {'accountId': edited.assignee} if edited.assignee else None
                 case 'points':
