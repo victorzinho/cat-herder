@@ -5,9 +5,10 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.orm import Session
 
 from cat_herder.domain.config import Config, TicketOrigin
-from cat_herder.domain.ticket import SprintState, Ticket, key_order
+from cat_herder.domain.ticket import Sprint, SprintState, Ticket, key_order
 from cat_herder.sources.errors import SourceUnreachable, TicketNotFound
 from cat_herder.sources.ticket_source import TicketSource
+from cat_herder.store.sprint_repository import SprintRepository
 from cat_herder.store.ticket_repository import StoredTicket, TicketRepository
 from cat_herder.store.ticket_space_sync_repository import TicketSpaceSyncRepository
 
@@ -33,6 +34,7 @@ class TicketsService:
     ) -> None:
         self._config = config
         self._ticket_repository = TicketRepository(session)
+        self._sprint_repository = SprintRepository(session)
         self._ticket_space_sync_repository = TicketSpaceSyncRepository(session)
         self._source_by_slug = {source.slug: source for source in sources}
         self._git_repository = git_repository
@@ -51,11 +53,15 @@ class TicketsService:
         return self._read(source, source_key, force_fetch)
 
     def sync(self, force_fetch: bool = False, project_slugs: Sequence[str] = ()) -> None:
-        """Fetch the spaces of those projects, or of every project, into the local copy.
+        """Fetch the projects' spaces into the local copy.
 
-        A space is read whole the first time, and then for what changed since. One synced within its source's window
-        is skipped. force_fetch re-reads everything, which deletes the
-        local copy of tickets gone from the space. If a source can't be reached, its spaces log a warning.
+        A space is read whole the first time, and then for what changed since.
+        One synced within its source's window is skipped.
+        If a source can't be reached, its spaces log a warning.
+
+        Args:
+            force_fetch: re-read every space whole, deleting the local copy of tickets gone from it.
+            project_slugs: the projects whose spaces to fetch. Empty fetches every project's.
         """
         for origin in self._origins(project_slugs):
             self._sync_space(origin, force_fetch)
@@ -83,6 +89,15 @@ class TicketsService:
             updated_since=updated_since,
         )
         return sorted(tickets, key=lambda ticket: key_order(ticket.key))
+
+    def find_sprints(self, name: str, source: str | None = None) -> list[Sprint]:
+        """The stored sprints with that name, ordered by source.
+
+        Args:
+            name: the sprint's name.
+            source: the slug of the only source to look in. None looks in every source.
+        """
+        return self._sprint_repository.find(name, source)
 
     def _assignee_by_source(self, person_slug: str) -> dict[str, str]:
         person = self._config.person(person_slug)

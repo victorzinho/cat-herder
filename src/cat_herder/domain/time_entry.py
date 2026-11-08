@@ -1,6 +1,9 @@
+from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+
+from cat_herder.domain.ticket import Sprint
 
 SECONDS_PER_HOUR = 3600
 
@@ -36,3 +39,19 @@ class TimeEntry:
     @property
     def hours(self) -> float:
         return (self.end - self.start).total_seconds() / SECONDS_PER_HOUR
+
+    def counts_in_sprint(self, sprint: Sprint, sprint_ticket_keys: Collection[str]) -> bool:
+        """Whether its hours count in the sprint.
+
+        An entry naming a sprint counts only in that one. One naming none counts within the sprint's dates if it's on
+        one of the sprint's tickets, or on no ticket while the sprint has some in the entry's project.
+
+        Args:
+            sprint: the sprint to count it in.
+            sprint_ticket_keys: ticket keys in the given sprint.
+        """
+        if self.sprint:
+            return self.sprint == sprint.name
+        if self.ticket_key:
+            return self.ticket_key in sprint_ticket_keys and sprint.covers(self.start)
+        return bool(sprint_ticket_keys) and sprint.covers(self.start)

@@ -1,0 +1,8 @@
+points: 3
+total_hours: 4.5
+ticket_hours: 3.5
+ticket_hours_percent: 78
+non_ticket_hours: 1
+non_ticket_hours_percent: 22
+ticket_speed: 0.86
+total_speed: 0.67

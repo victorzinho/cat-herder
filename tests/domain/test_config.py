@@ -1,11 +1,13 @@
 from collections.abc import Callable, Iterable
-from datetime import UTC, datetime
+from dataclasses import replace
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
 
-from cat_herder.domain.config import Config, Project, SourceConfig, TicketOrigin, TimeOrigin
+from cat_herder.domain.config import Config, Person, Project, SourceConfig, TicketOrigin, TimeOrigin
 from cat_herder.domain.ticket import Change
+from tests.dates import parse
 from tests.factories import (
     new_change,
     new_jira_source_config,
@@ -118,24 +120,50 @@ def test_ticket_sources_for_key_prefix_returns_the_sources_it_can_come_from(
     pytest.param(
         'Done',
         (
-            new_change(field='status', before='To do', after='Done', date=datetime(2026, 10, 2, tzinfo=UTC)),
-            new_change(field='status', before='Done', after='To do', date=datetime(2026, 10, 3, tzinfo=UTC)),
-            new_change(field='status', before='To do', after='Done', date=datetime(2026, 10, 4, tzinfo=UTC)),
+            new_change(field='status', before='To do', after='Done', date=parse('2026-10-02T00:00:00Z')),
+            new_change(field='status', before='Done', after='To do', date=parse('2026-10-03T00:00:00Z')),
+            new_change(field='status', before='To do', after='Done', date=parse('2026-10-04T00:00:00Z')),
         ),
-        datetime(2026, 10, 4, tzinfo=UTC),
+        parse('2026-10-04T00:00:00Z'),
         id='last-change-into-a-done-status',
     ),
-    pytest.param('Done', (), datetime(2026, 10, 1, tzinfo=UTC), id='created-without-a-change-into-one'),
+    pytest.param('Done', (), parse('2026-10-01T00:00:00Z'), id='created-without-a-change-into-one'),
     pytest.param('To do', (), None, id='not-done'),
 ])
 def test_done_date_is_when_the_ticket_was_done(
     status: str, changes: tuple[Change, ...], expected: datetime | None
 ) -> None:
     # GIVEN
-    ticket = new_ticket(status=status, created=datetime(2026, 10, 1, tzinfo=UTC), changes=changes)
+    ticket = new_ticket(status=status, created=parse('2026-10-01T00:00:00Z'), changes=changes)
 
     # WHEN / THEN
     assert new_jira_source_config(done_statuses=('Done',)).done_date(ticket) == expected
+
+
+@pytest.mark.parametrize(('identity', 'name'), [
+    pytest.param('456', 'ana', id='configured'),
+    pytest.param('999', 'unknown (999)', id='not-configured'),
+    pytest.param(None, 'unknown', id='no-identity'),
+])
+def test_person_name_is_the_slug_of_the_person_with_that_identity(identity: str | None, name: str) -> None:
+    # GIVEN ana, with 456 in Toggl
+    config = replace(_config(), people=(Person(slug='ana', identity_by_source={'toggl': 456}),))
+
+    # WHEN / THEN
+    assert config.person_name('toggl', identity) == name
+
+
+@pytest.mark.parametrize(('project_slug', 'capacity'), [
+    pytest.param(None, 40, id='total'),
+    pytest.param('sat', 10, id='project'),
+    pytest.param('web', 0, id='project-without-capacity'),
+])
+def test_capacity_is_the_weekly_hours_over_the_period(project_slug: str | None, capacity: float) -> None:
+    # GIVEN 20 h a week, 5 of them on sat
+    person = Person(slug='ana', identity_by_source={}, weekly_hours=20, hours_by_project={'sat': 5})
+
+    # WHEN / THEN
+    assert person.capacity(timedelta(weeks=2), project_slug) == capacity
 
 
 def _config(sources: Iterable[SourceConfig] = (), projects: Iterable[Project] = ()) -> Config:

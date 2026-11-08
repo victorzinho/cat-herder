@@ -1,5 +1,3 @@
-from datetime import UTC, datetime, timedelta, timezone
-
 import httpx
 import pytest
 
@@ -9,10 +7,10 @@ from cat_herder.sources.time_source import TimeSource
 from cat_herder.sources.toggl import source
 from cat_herder.sources.toggl.client import TogglClient
 from cat_herder.sources.toggl.source import TogglSource
+from tests.dates import parse
 from tests.toggl_api import ADMIN_PROJECT, SAT_PROJECT, TOGGL_CONFIG, TogglApi
 
-OCTOBER = (datetime(2026, 10, 1, tzinfo=UTC), datetime(2026, 11, 1, tzinfo=UTC))
-CEST = timezone(timedelta(hours=2))
+OCTOBER = (parse('2026-10-01T00:00:00Z'), parse('2026-11-01T00:00:00Z'))
 
 
 @pytest.fixture
@@ -38,8 +36,8 @@ def test_fetch_time_entries_maps_the_finished_entries_of_those_spaces_from_every
         space=SAT_PROJECT,
         person='456',
         description='SAT-7 Retry failed meteo imports',
-        start=datetime(2026, 10, 20, 9, tzinfo=CEST),
-        end=datetime(2026, 10, 20, 11, tzinfo=CEST),
+        start=parse('2026-10-20T09:00:00+02:00'),
+        end=parse('2026-10-20T11:00:00+02:00'),
         ticket_key='SAT-7',
     )
     assert (entries[3].ticket_key, entries[3].flags) == (None, {TimeEntryFlag.SEVERAL_TICKETS})
@@ -51,7 +49,7 @@ def test_fetch_time_entries_searches_a_day_more_on_each_side_and_keeps_those_sta
 ) -> None:
     # GIVEN
     cut = _source(toggl_api)
-    start, end = datetime(2026, 10, 21, tzinfo=CEST), datetime(2026, 10, 23, tzinfo=CEST)
+    start, end = parse('2026-10-21T00:00:00+02:00'), parse('2026-10-23T00:00:00+02:00')
 
     # WHEN
     entries = cut.fetch_time_entries([SAT_PROJECT], start, end)

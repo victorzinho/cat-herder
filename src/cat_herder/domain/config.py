@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
 from typing import Protocol
@@ -50,9 +50,10 @@ class TicketSourceConfig(SourceConfig):
     blocking_relation: str | None = None
 
     def done_date(self, ticket: Ticket) -> datetime | None:
-        """When the ticket was done: its last Change into a done status, or its creation if there's none.
+        """When the ticket was done.
 
-        None if it isn't done.
+        Returns:
+            The date of its last Change into a done status, or its creation if there's none. None if it isn't done.
         """
         if ticket.status not in self.done_statuses:
             return None
@@ -97,6 +98,11 @@ class Person:
     identity_by_source: dict[str, str | int]
     weekly_hours: float = 0
     hours_by_project: dict[str, float] = field(default_factory=dict[str, float])
+
+    def capacity(self, period: timedelta, project_slug: str | None = None) -> float:
+        """Hours they can work in that period, optionally for a given project."""
+        weekly_hours = self.hours_by_project.get(project_slug, 0) if project_slug else self.weekly_hours
+        return weekly_hours * (period / timedelta(weeks=1))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -143,27 +149,63 @@ class Config:
     default_non_ticket_percent: float | None = None
 
     def source(self, slug: str) -> SourceConfig:
+        """The source with that slug.
+
+        Raises:
+            KeyError: if no source has that slug.
+        """
         return _by_slug(self.sources, slug)
 
     def ticket_source(self, slug: str) -> TicketSourceConfig:
-        """Raises KeyError if no ticket source has that slug."""
+        """The ticket source with that slug.
+
+        Raises:
+            KeyError: if no ticket source has that slug.
+        """
         source = self.source(slug)
         if not isinstance(source, TicketSourceConfig):
             raise KeyError(slug)
         return source
 
     def time_source(self, slug: str) -> TimeSourceConfig:
-        """Raises KeyError if no time source has that slug."""
+        """The time source with that slug.
+
+        Raises:
+            KeyError: if no time source has that slug.
+        """
         source = self.source(slug)
         if not isinstance(source, TimeSourceConfig):
             raise KeyError(slug)
         return source
 
     def project(self, slug: str) -> Project:
+        """The project with that slug.
+
+        Raises:
+            KeyError: if no project has that slug.
+        """
         return _by_slug(self.projects, slug)
 
     def person(self, slug: str) -> Person:
+        """The person with that slug.
+
+        Raises:
+            KeyError: if no person has that slug.
+        """
         return _by_slug(self.people, slug)
+
+    def person_name(self, source: str, identity: str | None) -> str:
+        """The name to show for the person with that identity in the source.
+
+        Returns:
+            Their slug, "unknown (<identity>)" if no person has that identity, or "unknown" without an identity.
+        """
+        if identity is None:
+            return 'unknown'
+        person = next(
+            (person for person in self.people if str(person.identity_by_source.get(source)) == identity), None
+        )
+        return person.slug if person else f'unknown ({identity})'
 
     def project_of_ticket(self, ticket: Ticket) -> Project | None:
         """The project the ticket's space belongs to, if any."""

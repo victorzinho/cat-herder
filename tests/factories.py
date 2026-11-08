@@ -1,5 +1,5 @@
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 from cat_herder.domain.config import Access, EnvCredential, JiraSourceConfig, TogglSourceConfig
@@ -17,14 +17,14 @@ from cat_herder.domain.time_entry import TimeEntry
 from tests.dates import parse
 
 # Valid defaults. A test sets every field it asserts on or depends on, and leaves the rest to these.
-_DATE = datetime(2026, 10, 1, 9, tzinfo=UTC)
+_DATE = parse('2026-10-01T09:00:00Z')
 _SPRINT = Sprint(
     source='jira',
     id='1',
     name='Sprint 1',
     state=SprintState.IN_PROGRESS,
     start=_DATE,
-    planned_end=datetime(2026, 10, 15, 9, tzinfo=UTC),
+    planned_end=parse('2026-10-15T09:00:00Z'),
 )
 _COMMENT = Comment(author='account-ana', created=_DATE, body='A comment')
 _ATTACHMENT = Attachment(id='1', filename='notes.txt', size=1024, created=_DATE)

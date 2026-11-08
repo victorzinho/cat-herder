@@ -1,0 +1,40 @@
+sprint: All Sprint 1
+start: '2026-10-20T08:00:00Z'
+end: '2026-11-03T15:00:00Z'
+projects:
+  - project: sat
+    planned:
+      capacity: 20.42
+      estimate: 3
+      reestimated_by: 3
+    hours_done:
+      total: 4.25
+      tickets: 1.5
+      others: 2.75
+    outcome:
+      done: {tickets: 0, points: 0}
+      open: {tickets: 1, points: 5}
+      ticket_speed: 0
+      total_speed: 0
+      hours_vs_capacity: -16.17
+    people:
+      - {person: ana, capacity: 20.42, hours: 4.25, delta: -16.17}
+    tickets:
+      - {key: SAT-7, status: In progress, points: 5, estimate: 3, hours: 1.5, delta: -1.5, reestimated_by: 3}
+total:
+  planned:
+    capacity: 40.83
+    estimate: 3
+    reestimated_by: 3
+  hours_done:
+    total: 4.25
+    tickets: 1.5
+    others: 2.75
+  outcome:
+    done: {tickets: 0, points: 0}
+    open: {tickets: 1, points: 5}
+    ticket_speed: 0
+    total_speed: 0
+    hours_vs_capacity: -36.58
+  people:
+    - {person: ana, capacity: 40.83, hours: 4.25, delta: -36.58}

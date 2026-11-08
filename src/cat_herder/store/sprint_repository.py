@@ -36,6 +36,17 @@ class SprintRepository:
         _update_sprint_row(row, sprint)
         return row
 
+    def find(self, name: str, source: str | None = None) -> list[Sprint]:
+        """The sprints with that name, ordered by source.
+
+        Args:
+            name: the sprint's name.
+            source: the slug of the only source to look in. None looks in every source.
+        """
+        query = select(SprintRow).where(SprintRow.name == name)
+        if source:
+            query = query.where(SprintRow.source == source)
+        return [sprint_to_domain(row) for row in self._session.scalars(query.order_by(SprintRow.source))]
 
     def exists(self, name: str) -> bool:
         """Whether a sprint with that name is stored, in any source."""

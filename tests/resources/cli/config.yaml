@@ -20,6 +20,7 @@ sources:
 people:
   ana:
     identities: {jira: account-ana, toggl: 456}
+    weekly_capacity: {hours: 20, projects: {sat: 10}}
 projects:
   sat:
     tickets: {source: jira, space: SAT}

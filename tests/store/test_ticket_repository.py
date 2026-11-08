@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from cat_herder.domain.ticket import SprintState
 from cat_herder.store.database import database_session, open_database
 from cat_herder.store.ticket_repository import StoredTicket, TicketRepository
+from tests.dates import parse
 from tests.factories import (
     new_attachment,
     new_change,
@@ -21,7 +22,7 @@ from tests.factories import (
     new_ticket_summary,
 )
 
-FETCHED_AT = datetime(2026, 11, 6, 12, 0, tzinfo=UTC)
+FETCHED_AT = parse('2026-11-06T12:00:00Z')
 
 
 @pytest.fixture
@@ -44,8 +45,8 @@ def test_get_returns_the_saved_ticket_with_what_it_mentions(session: Session) ->
         title='Retry failed meteo imports',
         type='Task',
         status='In progress',
-        created=datetime(2026, 10, 12, 9, 30, tzinfo=UTC),
-        updated=datetime(2026, 10, 28, 16, 5, tzinfo=UTC),
+        created=parse('2026-10-12T09:30:00Z'),
+        updated=parse('2026-10-28T16:05:00Z'),
         description='The import fails silently when the provider times out...',
         labels=('backend',),
         components=('import',),
@@ -57,19 +58,19 @@ def test_get_returns_the_saved_ticket_with_what_it_mentions(session: Session) ->
                 id='42',
                 name='All Sprint 1',
                 state=SprintState.ENDED,
-                start=datetime(2026, 10, 20, tzinfo=UTC),
-                planned_end=datetime(2026, 11, 3, tzinfo=UTC),
-                actual_end=datetime(2026, 11, 4, tzinfo=UTC),
+                start=parse('2026-10-20T00:00:00Z'),
+                planned_end=parse('2026-11-03T00:00:00Z'),
+                actual_end=parse('2026-11-04T00:00:00Z'),
             ),
         ),
         custom_fields={'size': '🔥', 'reach': 3},
         comments=(
-            new_comment(author='account-ana', created=datetime(2026, 10, 20, 11, tzinfo=UTC), body='Reproduced'),
-            new_comment(author=None, created=datetime(2026, 10, 21, 8, tzinfo=UTC), body='Retried'),
+            new_comment(author='account-ana', created=parse('2026-10-20T11:00:00Z'), body='Reproduced'),
+            new_comment(author=None, created=parse('2026-10-21T08:00:00Z'), body='Retried'),
         ),
         attachments=(
             new_attachment(
-                id='501', filename='trace.log', size=48213, created=datetime(2026, 10, 20, 11, 2, tzinfo=UTC)
+                id='501', filename='trace.log', size=48213, created=parse('2026-10-20T11:02:00Z')
             ),
         ),
         parent=new_ticket_summary(key='SAT-2', title='Meteo pipeline', status='In progress', type='Epic'),
@@ -88,14 +89,14 @@ def test_get_returns_the_saved_ticket_with_what_it_mentions(session: Session) ->
                 author='account-ana',
                 before='To do',
                 after='In progress',
-                date=datetime(2026, 10, 21, 8, tzinfo=UTC),
+                date=parse('2026-10-21T08:00:00Z'),
             ),
             new_change(
                 field='assignee',
                 author=None,
                 before=None,
                 after='account-ana',
-                date=datetime(2026, 10, 21, 9, tzinfo=UTC),
+                date=parse('2026-10-21T09:00:00Z'),
             ),
         ),
     )
@@ -154,7 +155,7 @@ def test_saving_again_replaces_what_was_stored(session: Session) -> None:
         ),
         FETCHED_AT,
     )
-    later = datetime(2026, 11, 7, tzinfo=UTC)
+    later = parse('2026-11-07T00:00:00Z')
     refetched = new_ticket(key='SAT-7', status='Resolved')
 
     # WHEN

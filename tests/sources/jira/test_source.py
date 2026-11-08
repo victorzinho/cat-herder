@@ -21,12 +21,13 @@ from cat_herder.sources.errors import SourceError, SourceUnreachable, TicketNotF
 from cat_herder.sources.jira.client import JiraClient
 from cat_herder.sources.jira.source import JiraSource
 from cat_herder.sources.ticket_source import TicketSource
+from tests.dates import parse
 from tests.factories import new_change
 from tests.jira_api import JIRA_CONFIG, JiraApi, jira_api_with_sat
 
-ANA_EDIT = datetime(2026, 10, 21, 8, tzinfo=UTC)
-VICTOR_EDIT = datetime(2026, 10, 22, 7, 30, tzinfo=UTC)
-AUTOMATION_EDIT = datetime(2026, 10, 23, 6, tzinfo=UTC)
+ANA_EDIT = parse('2026-10-21T08:00:00Z')
+VICTOR_EDIT = parse('2026-10-22T07:30:00Z')
+AUTOMATION_EDIT = parse('2026-10-23T06:00:00Z')
 
 
 def test_fetch_ticket_maps_the_issue_with_every_page_of_what_it_mentions() -> None:
@@ -44,8 +45,8 @@ def test_fetch_ticket_maps_the_issue_with_every_page_of_what_it_mentions() -> No
         title='Retry failed meteo imports',
         type='Task',
         status='In progress',
-        created=datetime(2026, 10, 12, 9, 30, tzinfo=UTC),
-        updated=datetime(2026, 10, 28, 16, 5, tzinfo=UTC),
+        created=parse('2026-10-12T09:30:00Z'),
+        updated=parse('2026-10-28T16:05:00Z'),
         description='The import fails **silently** when the provider times out.',
         labels=('backend',),
         components=('import',),
@@ -58,35 +59,35 @@ def test_fetch_ticket_maps_the_issue_with_every_page_of_what_it_mentions() -> No
                 id='42',
                 name='All Sprint 1',
                 state=SprintState.ENDED,
-                start=datetime(2026, 10, 20, 8, tzinfo=UTC),
-                planned_end=datetime(2026, 11, 3, 12, tzinfo=UTC),
-                actual_end=datetime(2026, 11, 3, 15, tzinfo=UTC),
+                start=parse('2026-10-20T08:00:00Z'),
+                planned_end=parse('2026-11-03T12:00:00Z'),
+                actual_end=parse('2026-11-03T15:00:00Z'),
             ),
             Sprint(
                 source='jira',
                 id='43',
                 name='All Sprint 2',
                 state=SprintState.IN_PROGRESS,
-                start=datetime(2026, 11, 3, 16, tzinfo=UTC),
-                planned_end=datetime(2026, 11, 17, 12, tzinfo=UTC),
+                start=parse('2026-11-03T16:00:00Z'),
+                planned_end=parse('2026-11-17T12:00:00Z'),
             ),
         ),
         custom_fields={'size': '🔥', 'team': 'meteo-team'},
         comments=(
             Comment(
                 author='account-ana',
-                created=datetime(2026, 10, 20, 11, tzinfo=UTC),
+                created=parse('2026-10-20T11:00:00Z'),
                 body='Reproduced it with a 30 s timeout.',
             ),
             Comment(
                 author=None,
-                created=datetime(2026, 10, 21, 7, 15, tzinfo=UTC),
+                created=parse('2026-10-21T07:15:00Z'),
                 body='Retries scheduled by automation.',
             ),
         ),
         attachments=(
             Attachment(
-                id='501', filename='trace.log', size=48213, created=datetime(2026, 10, 20, 11, 2, tzinfo=UTC)
+                id='501', filename='trace.log', size=48213, created=parse('2026-10-20T11:02:00Z')
             ),
         ),
         parent=TicketSummary(source='jira', key='SAT-2', title='Meteo pipeline', status='In progress', type='Epic'),

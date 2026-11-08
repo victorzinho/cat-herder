@@ -1,9 +1,12 @@
 import re
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass, field, replace
+from datetime import datetime, timedelta
 from enum import StrEnum
 
 type CustomValue = str | float | None
+
+# How a Change to sprints joins the names of the sprints holding the ticket.
+_SPRINT_NAMES_SEPARATOR = ', '
 
 
 class SprintState(StrEnum):
@@ -23,6 +26,21 @@ class Sprint:
     start: datetime | None = None
     planned_end: datetime | None = None
     actual_end: datetime | None = None
+
+    @property
+    def duration(self) -> timedelta | None:
+        """From its start to its end (actual or planned). None without a start or an end."""
+        end = self.actual_end or self.planned_end
+        return end - self.start if self.start and end else None
+
+    def covers(self, moment: datetime) -> bool:
+        """Whether the moment is between its start and actual end, both included.
+
+        A sprint that hasn't ended runs from its start, and one that hasn't started covers nothing.
+        """
+        if not self.start or moment < self.start:
+            return False
+        return not self.actual_end or moment <= self.actual_end
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -105,6 +123,55 @@ class Ticket:
     changes: tuple[Change, ...] = ()
 
 
+    def as_of(self, when: datetime) -> 'Ticket':
+        """The ticket as it was at that moment, undoing the Changes after it.
+
+        Returns:
+            A copy with the status, points, estimated hours and Changes it had then. Sprints stay as they are, as
+            Changes only name them.
+        """
+        later = [change for change in self.changes if change.date > when]
+        status, points, estimated_hours = self.status, self.points, self.estimated_hours
+        for change in reversed(later):
+            match change.field:
+                case 'status':
+                    status = change.before or status
+                case 'points':
+                    points = _number(change.before)
+                case 'estimated_hours':
+                    estimated_hours = _number(change.before)
+                case _:
+                    pass
+        changes = self.changes[: len(self.changes) - len(later)]
+        return replace(self, status=status, points=points, estimated_hours=estimated_hours, changes=changes)
+
+    def sprint_names_as_of(self, when: datetime) -> set[str]:
+        """Names of the sprints holding the ticket then."""
+        names = {sprint.name for sprint in self.sprints}
+        for change in reversed(self.changes):
+            if change.date <= when:
+                break
+            if change.field == 'sprints':
+                names = _sprint_names(change.before)
+        return names
+
+    def was_in_sprint(self, name: str) -> bool:
+        """Whether the sprint with that name holds or ever held the ticket."""
+        return name in {sprint.name for sprint in self.sprints} or any(
+            name in _sprint_names(change.before) | _sprint_names(change.after)
+            for change in self.changes
+            if change.field == 'sprints'
+        )
+
+
 def key_order(key: str) -> tuple[str | int, ...]:
     """Sorts keys as their sources do, with SAT-8 before SAT-10."""
     return tuple(int(part) if part.isdigit() else part for part in re.split(r'(\d+)', key))
+
+
+def _number(value: str | None) -> float | None:
+    return float(value) if value else None
+
+
+def _sprint_names(value: str | None) -> set[str]:
+    return set(value.split(_SPRINT_NAMES_SEPARATOR)) if value else set()

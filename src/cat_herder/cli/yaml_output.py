@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import Any
 
 import yaml
@@ -22,7 +23,13 @@ def number(value: CustomValue) -> CustomValue | int:
     return int(value) if isinstance(value, float) and value.is_integer() else value
 
 
+def timestamp(value: datetime) -> str:
+    """In UTC, to the second."""
+    return value.astimezone(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
 def hours(value: float | None) -> CustomValue | int:
+    """Rounded to two decimals, and whole as an int."""
     return number(round(value, HOURS_DECIMALS)) if value is not None else None
 
 

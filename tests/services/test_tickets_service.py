@@ -16,9 +16,11 @@ from cat_herder.sources.errors import SourceUnreachable
 from cat_herder.sources.jira.client import JiraClient
 from cat_herder.sources.jira.source import JiraSource
 from cat_herder.store.database import database_session, open_database
+from cat_herder.store.sprint_repository import SprintRepository
 from cat_herder.store.ticket_repository import TicketRepository
 from cat_herder.store.ticket_space_sync_repository import TicketSpaceSyncRepository
-from tests.factories import new_ticket, new_toggl_source_config
+from tests.dates import parse
+from tests.factories import new_sprint, new_ticket, new_toggl_source_config
 from tests.jira_api import JIRA_CONFIG, JiraApi
 
 WINDOW = timedelta(seconds=JIRA_CONFIG.fetch_window_seconds)
@@ -113,7 +115,7 @@ def test_show_answers_from_the_local_copy_with_a_warning_when_unreachable(
     session: Session, jira_api: JiraApi, caplog: pytest.LogCaptureFixture
 ) -> None:
     # GIVEN SAT-7 stored on 2026-10-30, and Jira unreachable
-    _save_in_local_copy(session, STORED_SAT_7, datetime(2026, 10, 30, 9, tzinfo=UTC))
+    _save_in_local_copy(session, STORED_SAT_7, parse('2026-10-30T09:00:00Z'))
     jira_api.reachable = False
     cut = _service(session, jira_api)
 
@@ -285,7 +287,7 @@ def test_sync_warns_when_a_source_is_unreachable(session: Session, jira_api: Jir
     pytest.param({'sprint_name': CURRENT_SPRINT}, ['SAT-7'], id='current-sprint'),
     pytest.param({'assignee_slug': 'ana'}, ['SAT-7'], id='assignee'),
     pytest.param({'assignee_slug': 'bob'}, [], id='assignee-with-no-identity-in-the-source'),
-    pytest.param({'updated_since': datetime(2026, 10, 29, tzinfo=UTC)}, ['SAT-8', 'SAT-10'], id='updated-since'),
+    pytest.param({'updated_since': parse('2026-10-29T00:00:00Z')}, ['SAT-8', 'SAT-10'], id='updated-since'),
     pytest.param({'statuses': ['Done'], 'assignee_slug': 'ana'}, [], id='every-filter-must-match'),
 ])
 def test_list_tickets_syncs_and_lists_the_full_tickets_matching_every_filter(
@@ -315,6 +317,27 @@ def test_list_tickets_answers_from_the_local_copy_when_unreachable(
     # THEN
     assert [ticket.key for ticket in tickets] == ['SAT-7', 'SAT-8', 'SAT-10']
     assert caplog.messages == [f'jira unreachable, SAT is a local copy from {datetime.now(UTC):%Y-%m-%d}']
+
+
+@pytest.mark.parametrize(('source', 'sources'), [
+    pytest.param(None, ['jira', 'other'], id='any-source'),
+    pytest.param('other', ['other'], id='that-source'),
+])
+def test_find_sprints_finds_the_stored_ones_with_that_name(
+    session: Session, jira_api: JiraApi, source: str | None, sources: list[str]
+) -> None:
+    # GIVEN Sprint 1 in jira and in other, and Sprint 2 in jira
+    repository = SprintRepository(session)
+    repository.save(new_sprint(source='jira', id='1', name='Sprint 1'))
+    repository.save(new_sprint(source='other', id='1', name='Sprint 1'))
+    repository.save(new_sprint(source='jira', id='2', name='Sprint 2'))
+    cut = _service(session, jira_api)
+
+    # WHEN
+    sprints = cut.find_sprints('Sprint 1', source)
+
+    # THEN
+    assert [sprint.source for sprint in sprints] == sources
 
 
 def _service(session: Session, jira_api: JiraApi, config: Config = CONFIG) -> TicketsService:

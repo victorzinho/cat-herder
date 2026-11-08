@@ -49,10 +49,7 @@ class TimeEntryRepository:
         start: datetime | None = None,
         end: datetime | None = None,
     ) -> list[TimeEntry]:
-        """The entries stored in those spaces, oldest first, that match every criterion given.
-
-        start and end bound the entry's start, start included and end not.
-        """
+        """The entries stored in the origin's spaces, oldest first, that match every criterion given."""
         query = select(TimeEntryRow).where(TimeEntryRow.source == origin.source, TimeEntryRow.space.in_(origin.spaces))
         if ticket_key:
             query = query.where(TimeEntryRow.ticket_key == ticket_key)

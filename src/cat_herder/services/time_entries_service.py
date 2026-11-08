@@ -42,9 +42,11 @@ class TimeEntriesService:
         self._source_by_slug = {source.slug: source for source in sources}
 
     def sync(self, force_fetch: bool = False, project_slugs: Sequence[str] = ()) -> None:
-        """Sync the time sources of those projects, or every time source.
+        """Sync the projects' time sources into the local copy, each source whole.
 
-        force_fetch re-reads from history_from, picking up edits older than REFRESH_DAYS.
+        Args:
+            force_fetch: re-read each source's whole history, picking up edits older than the days a sync refreshes.
+            project_slugs: the projects whose time sources to sync. Empty syncs every time source.
         """
         for origin in self._origins(project_slugs):
             self._sync_source(origin, force_fetch)
