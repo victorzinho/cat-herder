@@ -11,14 +11,14 @@ from sqlalchemy.orm import Session
 from cat_herder.domain.config import Config, Person, Project, TicketOrigin
 from cat_herder.domain.ticket import Ticket
 from cat_herder.services.tickets_service import CURRENT_SPRINT, KeyNotResolved, TicketsService
-from cat_herder.sources.errors import SourceUnreachable
+from cat_herder.sources.errors import SourceUnreachable, WriteIncomplete
 from cat_herder.sources.jira.client import JiraClient
 from cat_herder.sources.jira.source import JiraSource
 from cat_herder.store.sprint_repository import SprintRepository
 from cat_herder.store.ticket_repository import TicketRepository
 from cat_herder.store.ticket_space_sync_repository import TicketSpaceSyncRepository
 from tests.dates import parse
-from tests.factories import new_sprint, new_ticket, new_toggl_source_config
+from tests.factories import new_link, new_sprint, new_ticket, new_toggl_source_config
 from tests.jira_api import JIRA_CONFIG, JiraApi
 
 WINDOW = timedelta(seconds=JIRA_CONFIG.fetch_window_seconds)
@@ -330,6 +330,64 @@ def test_find_sprints_finds_the_stored_ones_with_that_name(
 
     # THEN
     assert [sprint.source for sprint in sprints] == sources
+
+
+def test_edit_writes_the_edit_and_stores_the_ticket_as_the_source_has_it(session: Session, jira_api: JiraApi) -> None:
+    # GIVEN SAT-7 as Jira has it, and stored as it was long ago
+    cut = _service(session, jira_api)
+    sat_7 = cut.show('SAT-7')
+    assert sat_7
+    _save_in_local_copy(session, STORED_SAT_7, datetime.now(UTC) - WINDOW * 2)
+
+    # WHEN
+    cut.edit(replace(sat_7, title='Retry meteo imports'))
+
+    # THEN
+    assert jira_api.writes() == [('PUT', 'issue/SAT-7', {'fields': {'summary': 'Retry meteo imports'}, 'update': {}})]
+    stored = TicketRepository(session).get('jira', 'SAT-7')
+    assert stored
+    assert stored.ticket.title == 'Retry failed meteo imports'
+    assert abs(stored.fetched_at - datetime.now(UTC)) < timedelta(seconds=1)
+
+
+def test_edit_refreshes_the_local_copy_when_the_write_fails_partway(session: Session, jira_api: JiraApi) -> None:
+    # GIVEN SAT-7 stored long ago, and Jira rejecting new links
+    cut = _service(session, jira_api)
+    sat_7 = cut.show('SAT-7')
+    assert sat_7
+    _save_in_local_copy(session, sat_7, datetime.now(UTC) - WINDOW * 2)
+    jira_api.rejecting.add('POST issueLink')
+    edited = replace(sat_7, title='Retry meteo imports', links=(new_link(from_key='SAT-7', to_key='SAT-10'),))
+
+    # WHEN
+    with pytest.raises(WriteIncomplete):
+        cut.edit(edited)
+
+    # THEN
+    stored = TicketRepository(session).get('jira', 'SAT-7')
+    assert stored
+    assert abs(stored.fetched_at - datetime.now(UTC)) < timedelta(seconds=1)
+
+
+def test_comment_adds_it_and_stores_the_ticket_as_the_source_has_it(session: Session, jira_api: JiraApi) -> None:
+    # GIVEN
+    cut = _service(session, jira_api)
+
+    # WHEN
+    cut.comment('SAT-7', 'Done')
+
+    # THEN
+    assert [write[:2] for write in jira_api.writes()] == [('POST', 'issue/SAT-7/comment')]
+    assert TicketRepository(session).get('jira', 'SAT-7')
+
+
+def test_source_of_resolves_the_key_to_its_source(session: Session) -> None:
+    # GIVEN SAT in jira and other, with the git repository breaking the tie
+    cut = TicketsService(TWO_JIRAS, session, (), 'sat-meteo')
+
+    # WHEN / THEN
+    assert cut.source_of('SAT-7') == 'other'
+    assert cut.source_of('jira:SAT-7') == 'jira'
 
 
 def _service(session: Session, jira_api: JiraApi, config: Config = CONFIG) -> TicketsService:

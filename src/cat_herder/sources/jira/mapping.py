@@ -73,17 +73,10 @@ def ticket(
     estimate: int | None = fields.get('timeoriginalestimate')
     sprints: list[JsonObject] = (fields.get(config.sprints_field) or []) if config.sprints_field else []
     links: list[Link] = []
-    linked: list[TicketSummary] = []
+    related_summaries = [ticket_summary(config, parent)] if parent else []
     for issue_link in fields.get('issuelinks', []):
-        # The outward wording reads the same from either ticket: "A blocks B".
-        relation: str = issue_link['type']['outward']
-        if outward := issue_link.get('outwardIssue'):
-            links.append(Link(from_key=issue['key'], relation=relation, to_key=outward['key']))
-            linked.append(ticket_summary(config, outward))
-        else:
-            inward: JsonObject = issue_link['inwardIssue']
-            links.append(Link(from_key=inward['key'], relation=relation, to_key=issue['key']))
-            linked.append(ticket_summary(config, inward))
+        links.append(link(issue['key'], issue_link))
+        related_summaries.append(ticket_summary(config, issue_link.get('outwardIssue') or issue_link['inwardIssue']))
     return Ticket(
         source=config.slug,
         key=issue['key'],
@@ -93,7 +86,7 @@ def ticket(
         status=fields['status']['name'],
         created=datetime.fromisoformat(fields['created']),
         updated=datetime.fromisoformat(fields['updated']),
-        description=adf_to_markdown(description) if description else None,
+        description=(adf_to_markdown(description) or None) if description else None,
         labels=tuple(fields.get('labels', [])),
         components=tuple(component['name'] for component in fields.get('components', [])),
         assignee=assignee['accountId'] if assignee else None,
@@ -105,10 +98,10 @@ def ticket(
         },
         comments=tuple(_comment(comment) for comment in comments),
         attachments=tuple(_attachment(attachment) for attachment in fields.get('attachment', [])),
-        parent=ticket_summary(config, parent) if parent else None,
+        parent=parent['key'] if parent else None,
         children=tuple(ticket_summary(config, child) for child in children),
         links=tuple(links),
-        linked=tuple(linked),
+        related_summaries=tuple(related_summaries),
         changes=tuple(_changes(config, histories)),
     )
 
@@ -123,6 +116,15 @@ def ticket_summary(config: JiraSourceConfig, issue: JsonObject) -> TicketSummary
         status=fields['status']['name'],
         type=fields['issuetype']['name'],
     )
+
+
+def link(key: str, issue_link: JsonObject) -> Link:
+    """Map one of the issue links of the issue with that key."""
+    # The outward wording reads the same from either ticket: "A blocks B".
+    relation: str = issue_link['type']['outward']
+    if outward := issue_link.get('outwardIssue'):
+        return Link(from_key=key, relation=relation, to_key=outward['key'])
+    return Link(from_key=issue_link['inwardIssue']['key'], relation=relation, to_key=key)
 
 
 def _sprint(config: JiraSourceConfig, sprint: JsonObject) -> Sprint:

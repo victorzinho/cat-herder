@@ -22,6 +22,11 @@ def dump(document: object) -> str:
     return yaml.dump(document, Dumper=_Dumper, sort_keys=False, allow_unicode=True, default_flow_style=None, width=1000)
 
 
+def load(stream: Any) -> Any:
+    """The YAML in the stream or string, keeping unquoted datetimes as strings, as the schemas check them."""
+    return yaml.load(stream, Loader=_DatesAsStringsLoader)
+
+
 def number(value: CustomValue) -> CustomValue | int:
     """A whole float as an int, so 5.0 reads as 5."""
     return int(value) if isinstance(value, float) and value.is_integer() else value
@@ -41,6 +46,14 @@ class _Dumper(yaml.SafeDumper):
     # Indents list items under their key, as in the docs' examples.
     def increase_indent(self, flow: bool = False, indentless: bool = False) -> None:
         super().increase_indent(flow, False)
+
+
+class _DatesAsStringsLoader(yaml.SafeLoader):
+    # YAML turns an unquoted 2026-01-01T00:00:00Z into a datetime.
+    yaml_implicit_resolvers = {
+        first_char: [(tag, regexp) for tag, regexp in resolvers if tag != 'tag:yaml.org,2002:timestamp']
+        for first_char, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items()
+    }
 
 
 def _represent_str(dumper: yaml.SafeDumper, value: str) -> yaml.ScalarNode:

@@ -80,7 +80,7 @@ class TicketSourceConfig(SourceConfig):
         """
         if not self.blocking_relation:
             return ()
-        status_by_key = {linked.key: linked.status for linked in ticket.linked}
+        status_by_key = {related.key: related.status for related in ticket.related_summaries}
         blockers = {
             link.from_key
             for link in ticket.links

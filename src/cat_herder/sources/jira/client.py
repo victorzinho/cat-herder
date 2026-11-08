@@ -41,6 +41,12 @@ class JiraClient:
     def post(self, path: str, body: JsonObject) -> JsonObject:
         return self._send(self._http.build_request('POST', path, json=body))
 
+    def put(self, path: str, body: JsonObject) -> JsonObject:
+        return self._send(self._http.build_request('PUT', path, json=body))
+
+    def delete(self, path: str) -> JsonObject:
+        return self._send(self._http.build_request('DELETE', path))
+
     def _send(self, request: httpx.Request) -> JsonObject:
         described = f'{request.method} {request.url}'
         self._auth = self._auth or httpx.BasicAuth(*self._credentials())
@@ -54,7 +60,7 @@ class JiraClient:
             raise JiraNotFound(f'{described}: HTTP 404 {_error_detail(response)}')
         if response.is_error:
             raise SourceError(f'{described}: HTTP {response.status_code} {_error_detail(response)}')
-        return response.json()
+        return response.json() if response.content else {}
 
 
 def _error_detail(response: httpx.Response) -> str:

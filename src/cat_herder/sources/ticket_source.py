@@ -30,3 +30,27 @@ class TicketSource(Protocol):
             SourceError: if the source answers with an error.
         """
         ...
+
+    def update_ticket(self, edited: Ticket) -> None:
+        """Write what differs between the edited ticket and the ticket as the source has it now.
+
+        Only the fields a ticket YAML can write count. Calls go in the least error-prone order, and values the source
+        doesn't take are found before any write.
+
+        Raises:
+            SourceUnreachable: if the source can't be reached before writing anything.
+            TicketNotFound: if the source has no ticket with that key.
+            WriteIncomplete: if a call that writes fails.
+            SourceError: if the source doesn't take a value, or answers with any other error.
+        """
+        ...
+
+    def add_comment(self, key: str, body: str) -> None:
+        """Add a comment, in markdown, to the ticket.
+
+        Raises:
+            SourceUnreachable: if the source can't be reached.
+            TicketNotFound: if the source has no ticket with that key.
+            SourceError: if the source answers with any other error.
+        """
+        ...

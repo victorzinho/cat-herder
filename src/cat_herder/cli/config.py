@@ -7,6 +7,7 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
+from cat_herder.cli.yaml_format import load
 from cat_herder.domain.config import (
     DEFAULT_CAPACITY_MARGIN_HOURS,
     Access,
@@ -34,6 +35,10 @@ class ConfigError(Exception):
     """The config can't be used. The message has one line per problem, each starting with the config's path."""
 
 
+class WriteNotAllowed(Exception):
+    """The config gives the source read-only access."""
+
+
 def load_config(environ: Mapping[str, str]) -> Config:
     """Read and validate the config at CAT_HERDER_CONFIG, or at the default path, with `~` expanded.
 
@@ -43,7 +48,7 @@ def load_config(environ: Mapping[str, str]) -> Config:
     path = Path(environ.get(CONFIG_PATH_ENV) or DEFAULT_CONFIG_PATH).expanduser()
     try:
         with path.open() as stream:
-            document = yaml.load(stream, Loader=_DatesAsStringsLoader)
+            document = load(stream)
     except OSError as error:
         raise ConfigError(f'{path}: {error.strerror}') from error
     except yaml.YAMLError as error:
@@ -59,14 +64,6 @@ def load_config(environ: Mapping[str, str]) -> Config:
     if problems:
         raise ConfigError(_report(path, problems))
     return config
-
-
-class _DatesAsStringsLoader(yaml.SafeLoader):
-    # The schema checks datetimes as strings, but YAML turns an unquoted 2026-01-01T00:00:00Z into a datetime.
-    yaml_implicit_resolvers = {
-        first_char: [(tag, regexp) for tag, regexp in resolvers if tag != 'tag:yaml.org,2002:timestamp']
-        for first_char, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items()
-    }
 
 
 _VALIDATOR = Draft202012Validator(
@@ -183,3 +180,13 @@ def _reference_problems(config: Config) -> list[str]:
             if repository not in repository_slugs
         ]
     return problems
+
+
+def check_writable(config: Config, source: str) -> None:
+    """Check the config lets cat-herder write to the source, before contacting it.
+
+    Raises:
+        WriteNotAllowed: if the config gives the source read-only access.
+    """
+    if config.source(source).access is not Access.FULL:
+        raise WriteNotAllowed(f'{source} is read-only in the config')

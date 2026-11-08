@@ -2,12 +2,17 @@ import re
 from datetime import UTC, datetime
 from typing import Any
 
+from markdown_it import MarkdownIt
+from markdown_it.tree import SyntaxTreeNode
+
 type AdfNode = dict[str, Any]
 
 _INLINE_TYPES = {'text', 'hardBreak', 'mention', 'emoji', 'inlineCard', 'date', 'status', 'mediaInline'}
 _MEDIA_TYPES = {'mediaSingle', 'mediaGroup', 'media', 'mediaInline'}
 # Code goes innermost: marks around it still apply, while marks inside it would show as literal characters.
 _MARK_ORDER = {'code': 0, 'strong': 1, 'em': 2, 'strike': 3, 'link': 4}
+_MARKDOWN = MarkdownIt('commonmark').enable(['table', 'strikethrough'])
+_MARK_BY_MARKDOWN = {'strong': 'strong', 'em': 'em', 's': 'strike'}
 
 
 def adf_to_markdown(document: AdfNode) -> str:
@@ -149,3 +154,91 @@ def _plain_text_of(node: AdfNode) -> str:
             return '\n'
         case _:
             return _plain_text(node.get('content', []))
+
+
+def markdown_to_adf(markdown: str) -> AdfNode:
+    """Turn markdown into an Atlassian Document Format document, the way adf_to_markdown renders one back.
+
+    Line breaks inside a paragraph are kept, and HTML and images stay as their text.
+    """
+    return {'type': 'doc', 'version': 1, 'content': _adf_blocks(SyntaxTreeNode(_MARKDOWN.parse(markdown)).children)}
+
+
+def _adf_blocks(nodes: list[SyntaxTreeNode]) -> list[AdfNode]:
+    return [_adf_block(node) for node in nodes]
+
+
+def _adf_block(node: SyntaxTreeNode) -> AdfNode:
+    match node.type:
+        case 'paragraph':
+            return {'type': 'paragraph', 'content': _adf_inline(node.children[0].children)}
+        case 'heading':
+            return {'type': 'heading', 'attrs': {'level': int(node.tag[1:])}, 'content': _adf_inline_of(node)}
+        case 'bullet_list':
+            return {'type': 'bulletList', 'content': _adf_blocks(node.children)}
+        case 'ordered_list':
+            order = int(str(node.attrs.get('start', 1)))
+            return {'type': 'orderedList', 'attrs': {'order': order}, 'content': _adf_blocks(node.children)}
+        case 'list_item':
+            return {'type': 'listItem', 'content': _adf_blocks(node.children)}
+        case 'blockquote':
+            return {'type': 'blockquote', 'content': _adf_blocks(node.children)}
+        case 'hr':
+            return {'type': 'rule'}
+        case 'fence' | 'code_block':
+            code = node.content.removesuffix('\n')
+            return {
+                'type': 'codeBlock',
+                'attrs': {'language': node.info} if node.info else {},
+                'content': [{'type': 'text', 'text': code}] if code else [],
+            }
+        case 'table':
+            rows = [row for section in node.children for row in section.children]
+            return {'type': 'table', 'content': [_adf_table_row(row) for row in rows]}
+        case _:
+            return {'type': 'paragraph', 'content': _adf_text(node.content.strip(), [])}
+
+
+def _adf_table_row(row: SyntaxTreeNode) -> AdfNode:
+    cells = [
+        {
+            'type': 'tableHeader' if cell.type == 'th' else 'tableCell',
+            'content': [{'type': 'paragraph', 'content': _adf_inline_of(cell)}],
+        }
+        for cell in row.children
+    ]
+    return {'type': 'tableRow', 'content': cells}
+
+
+def _adf_inline_of(node: SyntaxTreeNode) -> list[AdfNode]:
+    # Headings and table cells hold one inline node, empty when they have no text.
+    return _adf_inline(node.children[0].children) if node.children else []
+
+
+def _adf_inline(nodes: list[SyntaxTreeNode], marks: tuple[AdfNode, ...] = ()) -> list[AdfNode]:
+    adf: list[AdfNode] = []
+    for node in nodes:
+        match node.type:
+            case 'softbreak' | 'hardbreak':
+                adf.append({'type': 'hardBreak'})
+            case 'code_inline':
+                # Code can only be a link besides.
+                links = [mark for mark in marks if mark['type'] == 'link']
+                adf.extend(_adf_text(node.content, [*links, {'type': 'code'}]))
+            case 'link':
+                link = {'type': 'link', 'attrs': {'href': node.attrs['href']}}
+                adf.extend(_adf_inline(node.children, (*marks, link)))
+            case markdown_mark if mark := _MARK_BY_MARKDOWN.get(markdown_mark):
+                adf.extend(_adf_inline(node.children, (*marks, {'type': mark})))
+            case 'image':
+                adf.extend(_adf_inline(node.children, marks))
+            case _:
+                adf.extend(_adf_text(node.content, list(marks)))
+    return adf
+
+
+def _adf_text(text: str, marks: list[AdfNode]) -> list[AdfNode]:
+    # ADF has no empty text nodes.
+    if not text:
+        return []
+    return [{'type': 'text', 'text': text, 'marks': marks} if marks else {'type': 'text', 'text': text}]

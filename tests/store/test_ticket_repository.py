@@ -73,13 +73,14 @@ def test_get_returns_the_saved_ticket_with_what_it_mentions(session: Session) ->
                 id='501', filename='trace.log', size=48213, created=parse('2026-10-20T11:02:00Z')
             ),
         ),
-        parent=new_ticket_summary(key='SAT-2', title='Meteo pipeline', status='In progress', type='Epic'),
+        parent='SAT-2',
         children=(new_ticket_summary(key='SAT-8', title='Add import metrics', status='To do', type='Task'),),
         links=(
             new_link(from_key='SAT-7', relation='blocks', to_key='SAT-9'),
             new_link(from_key='SAT-4', relation='blocks', to_key='SAT-7'),
         ),
-        linked=(
+        related_summaries=(
+            new_ticket_summary(key='SAT-2', title='Meteo pipeline', status='In progress', type='Epic'),
             new_ticket_summary(key='SAT-9', title='Publish meteo layer', status='To do', type='Task'),
             new_ticket_summary(key='SAT-4', title='Rotate API keys', status='Resolved', type='Task'),
         ),
@@ -115,7 +116,7 @@ def test_get_treats_a_ticket_known_only_through_another_as_missing(session: Sess
     ticket = new_ticket(
         key='SAT-7',
         links=(new_link(from_key='SAT-7', to_key='SAT-9'),),
-        linked=(new_ticket_summary(key='SAT-9'),),
+        related_summaries=(new_ticket_summary(key='SAT-9'),),
     )
     repository.save(ticket, FETCHED_AT)
 
@@ -147,10 +148,10 @@ def test_saving_again_replaces_what_was_stored(session: Session) -> None:
             sprints=(new_sprint(),),
             comments=(new_comment(),),
             attachments=(new_attachment(),),
-            parent=new_ticket_summary(key='SAT-2'),
+            parent='SAT-2',
             children=(new_ticket_summary(key='SAT-8'),),
             links=(new_link(from_key='SAT-7', to_key='SAT-9'),),
-            linked=(new_ticket_summary(key='SAT-9'),),
+            related_summaries=(new_ticket_summary(key='SAT-2'), new_ticket_summary(key='SAT-9')),
             changes=(new_change(),),
         ),
         FETCHED_AT,
@@ -172,7 +173,7 @@ def test_a_mention_updates_a_stored_ticket_but_keeps_the_rest(session: Session) 
     repository.save(sat_9, FETCHED_AT)
     mention = new_ticket_summary(key='SAT-9', title='Publish meteo layer', status='In progress')
     link = new_link(from_key='SAT-7', to_key='SAT-9')
-    sat_7 = new_ticket(key='SAT-7', links=(link,), linked=(mention,))
+    sat_7 = new_ticket(key='SAT-7', links=(link,), related_summaries=(mention,))
 
     # WHEN
     repository.save(sat_7, FETCHED_AT)
@@ -185,7 +186,9 @@ def test_a_mention_updates_a_stored_ticket_but_keeps_the_rest(session: Session) 
         title='Publish meteo layer',
         status='In progress',
         links=(link,),
-        linked=(new_ticket_summary(key='SAT-7', title=sat_7.title, status=sat_7.status, type=sat_7.type),),
+        related_summaries=(
+            new_ticket_summary(key='SAT-7', title=sat_7.title, status=sat_7.status, type=sat_7.type),
+        ),
     )
 
 
@@ -193,11 +196,11 @@ def test_delete_removes_the_ticket_its_links_and_its_childrens_parent(session: S
     # GIVEN SAT-7 stored, with its child SAT-8 and SAT-9, which it blocks, stored too
     repository = TicketRepository(session)
     sat_7 = new_ticket_summary(key='SAT-7')
-    repository.save(new_ticket(key='SAT-8', parent=sat_7), FETCHED_AT)
+    repository.save(new_ticket(key='SAT-8', parent='SAT-7', related_summaries=(sat_7,)), FETCHED_AT)
     repository.save(new_ticket(
         key='SAT-9',
         links=(new_link(from_key='SAT-7', to_key='SAT-9'),),
-        linked=(sat_7,),
+        related_summaries=(sat_7,),
     ), FETCHED_AT)
     repository.save(new_ticket(key='SAT-7'), FETCHED_AT)
 

@@ -3,6 +3,7 @@ import re
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import httpx
 import pytest
@@ -17,12 +18,12 @@ from cat_herder.domain.ticket import (
     Ticket,
     TicketSummary,
 )
-from cat_herder.sources.errors import SourceError, SourceUnreachable, TicketNotFound
+from cat_herder.sources.errors import SourceError, SourceUnreachable, TicketNotFound, WriteIncomplete
 from cat_herder.sources.jira.client import JiraClient
 from cat_herder.sources.jira.source import JiraSource
 from cat_herder.sources.ticket_source import TicketSource
 from tests.dates import parse
-from tests.factories import new_change
+from tests.factories import new_change, new_link, new_sprint, new_ticket
 from tests.jira_api import JIRA_CONFIG, JiraApi, jira_api_with_sat
 
 ANA_EDIT = parse('2026-10-21T08:00:00Z')
@@ -90,7 +91,7 @@ def test_fetch_ticket_maps_the_issue_with_every_page_of_what_it_mentions() -> No
                 id='501', filename='trace.log', size=48213, created=parse('2026-10-20T11:02:00Z')
             ),
         ),
-        parent=TicketSummary(source='jira', key='SAT-2', title='Meteo pipeline', status='In progress', type='Epic'),
+        parent='SAT-2',
         children=(
             TicketSummary(source='jira', key='SAT-8', title='Add import metrics', status='To do', type='Task'),
             TicketSummary(source='jira', key='SAT-10', title='Alert on failed imports', status='Done', type='Sub-task'),
@@ -99,7 +100,8 @@ def test_fetch_ticket_maps_the_issue_with_every_page_of_what_it_mentions() -> No
             Link(from_key='SAT-7', relation='blocks', to_key='SAT-9'),
             Link(from_key='SAT-4', relation='blocks', to_key='SAT-7'),
         ),
-        linked=(
+        related_summaries=(
+            TicketSummary(source='jira', key='SAT-2', title='Meteo pipeline', status='In progress', type='Epic'),
             TicketSummary(source='jira', key='SAT-9', title='Publish meteo layer', status='To do', type='Task'),
             TicketSummary(source='jira', key='SAT-4', title='Rotate API keys', status='Resolved', type='Task'),
         ),
@@ -187,7 +189,7 @@ def test_fetch_tickets_maps_the_spaces_tickets_as_fetch_ticket_does() -> None:
     # THEN
     assert [ticket.key for ticket in tickets] == ['SAT-7', 'SAT-8', 'SAT-10']
     assert tickets[0] == sat_7
-    assert [ticket.parent.key if ticket.parent else None for ticket in tickets] == ['SAT-2', 'SAT-7', 'SAT-7']
+    assert [ticket.parent for ticket in tickets] == ['SAT-2', 'SAT-7', 'SAT-7']
 
 
 def test_fetch_tickets_asks_only_for_tickets_updated_since() -> None:
@@ -202,6 +204,199 @@ def test_fetch_tickets_asks_only_for_tickets_updated_since() -> None:
     # THEN a minute of margin, and possibly another one passing during the test
     jql = json.loads(jira_api.requests[0].content)['jql']
     assert re.fullmatch(r'project = "SAT" AND updated >= -1[12]m ORDER BY key', jql)
+
+
+def test_update_ticket_writes_the_fields_in_one_call_then_the_links_and_the_status_last() -> None:
+    # GIVEN
+    jira_api = JiraApi()
+    cut = _source(jira_api)
+    sat_7 = cut.fetch_ticket('SAT-7')
+    edited = replace(
+        sat_7,
+        title='Retry meteo imports',
+        type='Bug',
+        status='Done',
+        assignee='account-bob',
+        points=3,
+        estimated_hours=1.5,
+        custom_fields={'size': '🕯️', 'team': None},
+        parent='SAT-3',
+        sprints=(new_sprint(id='42', state=SprintState.ENDED), new_sprint(id='44', state=SprintState.NOT_STARTED)),
+        labels=('backend', 'meteo'),
+        components=(),
+        description='**Retry** them',
+        links=(
+            new_link(from_key='SAT-7', relation='blocks', to_key='SAT-9'),
+            new_link(from_key='SAT-7', relation='relates to', to_key='SAT-10'),
+        ),
+    )
+
+    # WHEN
+    cut.update_ticket(edited)
+
+    # THEN
+    description = {'type': 'doc', 'version': 1, 'content': [{'type': 'paragraph', 'content': [
+        {'type': 'text', 'text': 'Retry', 'marks': [{'type': 'strong'}]}, {'type': 'text', 'text': ' them'},
+    ]}]}
+    assert jira_api.writes() == [
+        ('PUT', 'issue/SAT-7', {
+            'fields': {
+                'summary': 'Retry meteo imports',
+                'issuetype': {'name': 'Bug'},
+                'assignee': {'accountId': 'account-bob'},
+                'customfield_10035': 3,
+                'customfield_10043': {'value': '🕯️'},
+                'customfield_10044': None,
+                'parent': {'key': 'SAT-3'},
+                'customfield_10020': 44,
+                'labels': ['backend', 'meteo'],
+                'components': [],
+                'description': description,
+            },
+            'update': {'timetracking': [{'edit': {'originalEstimate': '90m'}}]},
+        }),
+        ('POST', 'issueLink', {
+            'type': {'name': 'Relates'}, 'inwardIssue': {'key': 'SAT-7'}, 'outwardIssue': {'key': 'SAT-10'}
+        }),
+        ('DELETE', 'issueLink/10062', None),
+        ('POST', 'issue/SAT-7/transitions', {'transition': {'id': '31'}}),
+    ]
+
+
+def test_update_ticket_clears_fields_set_to_none() -> None:
+    # GIVEN
+    jira_api = JiraApi()
+    cut = _source(jira_api)
+    sat_7 = cut.fetch_ticket('SAT-7')
+    edited = replace(
+        sat_7,
+        assignee=None,
+        points=None,
+        estimated_hours=None,
+        parent=None,
+        sprints=(new_sprint(id='42', state=SprintState.ENDED),),
+        description=None,
+    )
+
+    # WHEN
+    cut.update_ticket(edited)
+
+    # THEN
+    assert jira_api.writes() == [
+        ('PUT', 'issue/SAT-7', {
+            'fields': {
+                'assignee': None,
+                'customfield_10035': None,
+                'parent': None,
+                'customfield_10020': None,
+                'description': None,
+            },
+            'update': {'timetracking': [{'edit': {'originalEstimate': ''}}]},
+        }),
+    ]
+
+
+@pytest.mark.parametrize(('edits', 'message'), [
+    pytest.param({'status': 'Blocked'}, "SAT-7 can't go to Blocked in jira, only to: Done", id='status'),
+    pytest.param(
+        {'links': (new_link(from_key='SAT-7', relation='clones', to_key='SAT-9'),)},
+        'jira has no relation clones, only: blocks, relates to',
+        id='relation',
+    ),
+    pytest.param(
+        {'custom_fields': {'size': '🌋', 'team': 'meteo-team'}}, "size can't be 🌋, only: 🔥, 🕯️", id='option'
+    ),
+    pytest.param(
+        {'sprints': (
+            new_sprint(id='42', state=SprintState.ENDED),
+            new_sprint(id='43', state=SprintState.IN_PROGRESS),
+            new_sprint(id='44', state=SprintState.NOT_STARTED),
+        )},
+        "jira holds a ticket in one sprint that hasn't ended at most",
+        id='two-sprints-not-ended',
+    ),
+    pytest.param(
+        {'sprints': (new_sprint(id='43', state=SprintState.IN_PROGRESS),)},
+        "jira can't add or remove ended sprints",
+        id='ended-sprint',
+    ),
+])
+def test_update_ticket_raises_without_writing_for_a_value_jira_doesnt_take(edits: dict[str, Any], message: str) -> None:
+    # GIVEN
+    jira_api = JiraApi()
+    cut = _source(jira_api)
+    sat_7 = cut.fetch_ticket('SAT-7')
+
+    # WHEN
+    with pytest.raises(SourceError, match=re.escape(message)):
+        cut.update_ticket(replace(sat_7, **edits))
+
+    # THEN
+    assert jira_api.writes() == []
+
+
+def test_update_ticket_reports_what_was_and_wasnt_written_when_a_write_fails() -> None:
+    # GIVEN Jira rejecting new links
+    jira_api = JiraApi()
+    jira_api.rejecting.add('POST issueLink')
+    cut = _source(jira_api)
+    sat_7 = cut.fetch_ticket('SAT-7')
+    edited = replace(
+        sat_7,
+        title='Retry meteo imports',
+        labels=(),
+        status='Done',
+        links=(new_link(from_key='SAT-7', relation='relates to', to_key='SAT-10'),),
+    )
+
+    # WHEN
+    with pytest.raises(WriteIncomplete) as raised:
+        cut.update_ticket(edited)
+
+    # THEN
+    assert str(raised.value).startswith(
+        'SAT-7 got title, labels, and not link SAT-7 relates to SAT-10, unlink SAT-4 blocks SAT-7, '
+        'unlink SAT-7 blocks SAT-9, status Done: POST '
+    )
+    assert [write[0] for write in jira_api.writes()] == ['PUT', 'POST']
+
+
+def test_add_comment_posts_the_markdown_as_adf() -> None:
+    # GIVEN
+    jira_api = JiraApi()
+    cut = _source(jira_api)
+
+    # WHEN
+    cut.add_comment('SAT-7', 'Done in `main`')
+
+    # THEN
+    body = {'type': 'doc', 'version': 1, 'content': [{'type': 'paragraph', 'content': [
+        {'type': 'text', 'text': 'Done in '}, {'type': 'text', 'text': 'main', 'marks': [{'type': 'code'}]},
+    ]}]}
+    assert jira_api.writes() == [('POST', 'issue/SAT-7/comment', {'body': body})]
+
+
+def test_update_ticket_writes_nothing_when_nothing_differs() -> None:
+    # GIVEN
+    jira_api = JiraApi()
+    cut = _source(jira_api)
+
+    # WHEN
+    cut.update_ticket(cut.fetch_ticket('SAT-7'))
+
+    # THEN
+    assert jira_api.writes() == []
+
+
+def test_writes_raise_ticket_not_found_for_a_ticket_jira_doesnt_have() -> None:
+    # GIVEN
+    cut = _source(JiraApi())
+
+    # WHEN / THEN
+    with pytest.raises(TicketNotFound, match='jira has no ticket SAT-9'):
+        cut.update_ticket(new_ticket(key='SAT-9'))
+    with pytest.raises(TicketNotFound, match='jira has no ticket SAT-9'):
+        cut.add_comment('SAT-9', 'Gone')
 
 
 def _source(

@@ -150,7 +150,7 @@ def save_sprint_2(session: Session) -> Callable[..., Sprint]:
                 points=8,
                 estimated_hours=15,
                 links=(*blocks, new_link(from_key='WEB-1', relation='blocks', to_key='WEB-9')),
-                linked=(
+                related_summaries=(
                     new_ticket_summary(key='SAT-1', status='To do'),
                     new_ticket_summary(key='WEB-2', status='To do'),
                     new_ticket_summary(key='WEB-3', status='Done'),

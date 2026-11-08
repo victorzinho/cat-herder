@@ -124,10 +124,12 @@ class TicketRepository:
         row.fetched_at = fetched_at
         row.sprints = [self._sprint_repository.save(sprint) for sprint in ticket.sprints]
         row.changes = [_change_from_domain(change) for change in ticket.changes]
-        row.parent = self._save_summary(ticket.parent) if ticket.parent else None
+        row_by_key = {ticket.key: row} | {
+            related.key: self._save_summary(related) for related in ticket.related_summaries
+        }
+        row.parent = row_by_key[ticket.parent] if ticket.parent else None
         row.children = [self._save_summary(child) for child in ticket.children]
 
-        row_by_key = {ticket.key: row} | {linked.key: self._save_summary(linked) for linked in ticket.linked}
         self._session.flush()
         self._session.execute(delete(LinkRow).where(or_(LinkRow.from_id == row.id, LinkRow.to_id == row.id)))
         self._session.add_all(
@@ -233,12 +235,13 @@ def _ticket_from_rows(row: TicketRow, links: Sequence[LinkRow]) -> Ticket:
         custom_fields=dict(row.custom_fields or {}),
         comments=tuple(_comment_to_domain(comment) for comment in row.comments),
         attachments=tuple(_attachment_to_domain(attachment) for attachment in row.attachments),
-        parent=_summary_to_domain(row.parent) if row.parent else None,
+        parent=row.parent.key if row.parent else None,
         children=tuple(_summary_to_domain(child) for child in sorted(row.children, key=lambda row: key_order(row.key))),
         links=tuple(_link_to_domain(link) for link in links),
-        linked=tuple(
-            _summary_to_domain(link.to_ticket if link.from_id == row.id else link.from_ticket) for link in links
-        ),
+        related_summaries=tuple(_summary_to_domain(related) for related in [
+            *([row.parent] if row.parent else []),
+            *(link.to_ticket if link.from_id == row.id else link.from_ticket for link in links),
+        ]),
         changes=tuple(_change_to_domain(change) for change in row.changes),
     )
 

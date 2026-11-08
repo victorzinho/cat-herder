@@ -1,12 +1,13 @@
 import logging
 from collections.abc import Iterable, Sequence
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
 from cat_herder.domain.config import Config, TicketOrigin
 from cat_herder.domain.ticket import Sprint, SprintState, Ticket, key_order
-from cat_herder.sources.errors import SourceUnreachable, TicketNotFound
+from cat_herder.sources.errors import SourceError, SourceUnreachable, TicketNotFound
 from cat_herder.sources.ticket_source import TicketSource
 from cat_herder.store.sprint_repository import SprintRepository
 from cat_herder.store.ticket_repository import StoredTicket, TicketRepository
@@ -27,6 +28,8 @@ class TicketsService:
 
     If the source can't be reached, reads answer from the local copy and log a warning. Keys resolve from the config,
     with the current git repository's projects breaking ties between sources.
+
+    Writes need the source to be reachable, and store the ticket as the source has it after.
     """
 
     def __init__(
@@ -99,6 +102,45 @@ class TicketsService:
         """
         return self._sprint_repository.find(name, source)
 
+    def source_of(self, key: str) -> str:
+        """The slug of the ticket source the key resolves to.
+
+        Raises:
+            KeyNotResolved: if the key doesn't resolve to one source.
+        """
+        return self._resolve(key)[0]
+
+    def edit(self, edited: Ticket) -> None:
+        """Write the edited ticket to its source, which writes only what differs from what it has.
+
+        The local copy is then refreshed, as far as the source can be reached, whether the write worked or not.
+
+        Raises:
+            SourceUnreachable: if the source can't be reached.
+            TicketNotFound: if the source doesn't have the ticket.
+            WriteIncomplete: if the source fails after writing part of the edit.
+            SourceError: if the source doesn't take a value, or answers with any other error.
+        """
+        try:
+            self._source_by_slug[edited.source].update_ticket(edited)
+        finally:
+            # best-effort refresh in any case, update_ticket might have written partially
+            with suppress(SourceError, SourceUnreachable):
+                self._fetch(edited.source, edited.key)
+
+    def comment(self, key: str, body: str) -> None:
+        """Add a comment, in markdown, to the ticket.
+
+        Raises:
+            KeyNotResolved: if the key doesn't resolve to one source.
+            SourceUnreachable: if the source can't be reached.
+            TicketNotFound: if the source doesn't have the ticket.
+            SourceError: if the source answers with any other error.
+        """
+        source, source_key = self._resolve(key)
+        self._source_by_slug[source].add_comment(source_key, body)
+        self._fetch(source, source_key)
+
     def _assignee_by_source(self, person_slug: str) -> dict[str, str]:
         person = self._config.person(person_slug)
         return {source: str(identity) for source, identity in person.identity_by_source.items()}
@@ -113,7 +155,7 @@ class TicketsService:
         return sorted(origins, key=lambda origin: (origin.source, origin.space))
 
     def _resolve(self, key: str) -> tuple[str, str]:
-        # Returns the source and its own key.
+        # returns the source and its own key
         source, separator, unqualified = key.rpartition(':')
         if separator:
             return source, unqualified
@@ -143,14 +185,19 @@ class TicketsService:
             return stored.ticket
 
         try:
-            ticket = self._source_by_slug[source].fetch_ticket(key)
+            return self._fetch(source, key)
         except SourceUnreachable:
             return _local_copy(source, key, stored)
         except TicketNotFound:
-            self._ticket_repository.delete(source, key)
             return None
 
-        self._ticket_repository.save(ticket, now)
+    def _fetch(self, source: str, key: str) -> Ticket:
+        try:
+            ticket = self._source_by_slug[source].fetch_ticket(key)
+        except TicketNotFound:
+            self._ticket_repository.delete(source, key)
+            raise
+        self._ticket_repository.save(ticket, datetime.now(UTC))
         return ticket
 
     def _sync_space(self, origin: TicketOrigin, force_fetch: bool) -> None:

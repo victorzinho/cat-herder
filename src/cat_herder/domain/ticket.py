@@ -139,12 +139,13 @@ class Ticket:
     custom_fields: dict[str, CustomValue] = field(default_factory=dict[str, CustomValue])
     comments: tuple[Comment, ...] = ()
     attachments: tuple[Attachment, ...] = ()
-    parent: TicketSummary | None = None
+    parent: str | None = None
+    """The parent's key."""
     children: tuple[TicketSummary, ...] = ()
     links: tuple[Link, ...] = ()
-    linked: tuple[TicketSummary, ...] = ()
+    related_summaries: tuple[TicketSummary, ...] = ()
+    """The tickets its parent and links name, as they are now."""
     changes: tuple[Change, ...] = ()
-
 
     def as_of(self, when: datetime) -> 'Ticket':
         """The ticket as it was at that moment, undoing the Changes after it.

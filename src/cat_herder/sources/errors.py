@@ -12,3 +12,7 @@ class TicketNotFound(SourceError):
 
 class CredentialsMissing(Exception):
     """An environment variable the config names for a source's credentials isn't set."""
+
+
+class WriteIncomplete(SourceError):
+    """A write failed before applying all its changes. The message says which were applied and which weren't."""

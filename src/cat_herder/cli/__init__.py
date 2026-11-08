@@ -5,11 +5,9 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
+from cat_herder.cli.commands import comment, edit, report, show, sync
 from cat_herder.cli.commands import list as list_command
-from cat_herder.cli.commands import report, show, sync
-from cat_herder.cli.config import ConfigError, load_config
-from cat_herder.services.tickets_service import KeyNotResolved
-from cat_herder.sources.errors import CredentialsMissing, SourceError, SourceUnreachable
+from cat_herder.cli.config import load_config
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -23,6 +21,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument('--version', action='version', version=f'%(prog)s {version("cat-herder")}')
     commands = parser.add_subparsers(title='commands', dest='command')
+    comment.configure(commands.add_parser(
+        'comment', help='add a comment to a ticket', description='Add a comment, in markdown, to a ticket.'
+    ))
+    edit.configure(commands.add_parser(
+        'edit',
+        help='edit a ticket from YAML',
+        description='Edit a ticket from YAML in the shape show prints, writing only the fields that differ.',
+    ))
     list_command.configure(commands.add_parser(
         'list',
         help='list tickets matching filters',
@@ -48,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         config = load_config(os.environ)
         return args.run(args, config, os.environ, Path.cwd())
-    except (ConfigError, CredentialsMissing, KeyNotResolved, SourceError, SourceUnreachable) as error:
+    except Exception as error:
         print(f'cat-herder: {error}', file=sys.stderr)
         return 1
     finally:

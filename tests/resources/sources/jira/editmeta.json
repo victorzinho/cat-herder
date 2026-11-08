@@ -1,0 +1,22 @@
+{
+  "fields": {
+    "customfield_10043": {
+      "schema": {
+        "type": "option"
+      },
+      "allowedValues": [
+        {
+          "value": "🔥"
+        },
+        {
+          "value": "🕯️"
+        }
+      ]
+    },
+    "customfield_10044": {
+      "schema": {
+        "type": "string"
+      }
+    }
+  }
+}

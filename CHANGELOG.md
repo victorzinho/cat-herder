@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `edit` writes a ticket from YAML in the shape `show` prints, from a file or stdin, sending only the fields that differ from the ticket in the source. A read-only field that differs, an unknown person, sprint or custom field, or a value Jira doesn't take, such as a status no transition leads to, stops it before anything is written. If a write fails partway, it reports what was written and what wasn't. A source the config makes `read-only` is refused without contacting it.
+- `comment` adds a comment in markdown to a ticket. A source the config makes `read-only` is refused without contacting it.
 - `report sprint` also reports on a sprint that hasn't started and one in progress: whether each person's work left fits their capacity for tickets, per project and in total, and its problems, from work that won't fit or spare capacity to unassigned, unestimated and blocked tickets. The share of capacity kept for non-ticket work comes from each project's last 3 ended sprints, or `default_non_ticket_percent`. The new `capacity_margin_hours` sets how far work can be from capacity before it's flagged, 1 h by default.
 - `report sprint` gives an ended sprint's plan, hours and outcome per project and in total, with each person's capacity and hours, and each ticket that was in it at any point. `jira:<name>` picks the source when several have a sprint with that name.
 - `report project` gives a project's done points, its hours on tickets and the rest, and its speed, for all time or between `--from` and `--to`.
