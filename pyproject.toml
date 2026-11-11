@@ -1,6 +1,6 @@
 [project]
 name = "cat-herder"
-version = "0.1.0rc1"
+version = "0.1.0rc2"
 description = "Tickets and hours from separate tools, such as Jira and Toggl, in one place"
 readme = "README.md"
 license = "MIT"
