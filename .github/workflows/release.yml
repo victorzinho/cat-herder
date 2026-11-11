@@ -19,8 +19,8 @@ jobs:
       RELEASE_TYPE: ${{ inputs.release_type }}
     steps:
       - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
-      - uses: extractions/setup-just@v3
+      - uses: astral-sh/setup-uv@v7
+      - run: uv tool install rust-just
 
       - name: Check
         run: just check

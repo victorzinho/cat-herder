@@ -2,13 +2,8 @@
 
 ## Unreleased
 
-- `create` makes a ticket from YAML in the shape `show` prints, from a file or stdin, and prints its key. Fields left out get the source's defaults, and in links a missing end means the new ticket. A read-only field, a missing project, an unknown person, sprint or custom field, or a value Jira doesn't take, such as an unknown type or relation, stops it before anything is created. A status no transition leads to can only be found once it's created, and is reported with whatever else wasn't written. A source the config makes `read-only` is refused without contacting it.
-- `edit` writes a ticket from YAML in the shape `show` prints, from a file or stdin, sending only the fields that differ from the ticket in the source. A read-only field that differs, an unknown person, sprint or custom field, or a value Jira doesn't take, such as a status no transition leads to, stops it before anything is written. If a write fails partway, it reports what was written and what wasn't. A source the config makes `read-only` is refused without contacting it.
-- `comment` adds a comment in markdown to a ticket. A source the config makes `read-only` is refused without contacting it.
-- `report sprint` also reports on a sprint that hasn't started and one in progress: whether each person's work left fits their capacity for tickets, per project and in total, and its problems, from work that won't fit or spare capacity to unassigned, unestimated and blocked tickets. The share of capacity kept for non-ticket work comes from each project's last 3 ended sprints, or `default_non_ticket_percent`. The new `capacity_margin_hours` sets how far work can be from capacity before it's flagged, 1 h by default.
-- `report sprint` gives an ended sprint's plan, hours and outcome per project and in total, with each person's capacity and hours, and each ticket it held while it ran. `jira:<name>` picks the source when several have a sprint with that name, and `--id` picks one of several sprints with the same name.
-- `report project` gives a project's done points, its hours on tickets and the rest, and its speed, for all time or between `--from` and `--to`.
-- Toggl time entries: `show` reports the ticket's `spent_hours`, and `sync` also fetches the time sources, the first time from `history_from` and then the last 30 days. Only keys in a configured space count, so a `UTF-8` in a description is just text. Entries naming a ticket outside their project, several tickets, or a missing one are stored with a flag.
-- `list` shows the tickets matching filters by project, sprint, status, assignee and update date, after syncing their projects, and answers from the local copy when Jira is unreachable or answers with an error.
-- `sync` brings the configured spaces into the local copy, fetching only what changed since the last sync, or everything with `--force-fetch`.
-- `show` reads one ticket from Jira as YAML, with `--brief`, `--changes` and `--force-fetch`, and answers from the local copy when Jira is unreachable or answers with an error. Tickets include their `priority`.
+- New commands `show`, `list` and `sync`: Jira tickets through a local copy, which answers when Jira is unreachable.
+- New commands `create`, `edit` and `comment`: write tickets, from YAML in the shape `show` prints.
+- New command `report sprint`: a sprint's plan, progress and outcome against each person's capacity.
+- New command `report project`: a project's points, hours and speed.
+- Hours per ticket from Toggl.
