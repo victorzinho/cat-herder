@@ -3,6 +3,8 @@ name = "cat-herder"
 version = "0.1.0.dev0"
 description = "Tickets and hours from separate tools, such as Jira and Toggl, in one place"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Víctor González" }]
 requires-python = ">=3.12"
 dependencies = [
