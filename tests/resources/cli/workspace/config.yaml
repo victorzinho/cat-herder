@@ -1,4 +1,5 @@
-# The tests copy it to a temporary directory, which then holds data_dir.
+# The sample workspace every CLI test runs in: the tests copy this directory to a temporary one, make each repository
+# a git repository and code/sat-worktree a worktree of sat. Paths are relative to this directory.
 data_dir: data
 sources:
   jira:
@@ -22,7 +23,21 @@ people:
   ana:
     identities: {jira: account-ana, toggl: 456}
     weekly_capacity: {hours: 20, projects: {sat: 10}}
+repositories:
+  sat: code/sat
+  sat-meteo: code/sat-meteo
+  tools: code/tools
+  website: music/website
 projects:
   sat:
     tickets: {source: jira, space: SAT}
     time: {source: toggl, spaces: [SAT]}
+    repositories: [sat, sat-meteo]
+  ops:
+    tickets: {source: jira, space: OPS}
+    time: {source: toggl, spaces: [OPS]}
+    repositories: [sat-meteo]
+  web:
+    tickets: {source: jira, space: WEB}
+    time: {source: toggl, spaces: [WEB]}
+    repositories: [website]

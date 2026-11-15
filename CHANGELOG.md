@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- New command `config show`: the config, or the part of it for a path or a project.
+
 ## 0.1.0
 
 - New commands `show`, `list` and `sync`: Jira tickets through a local copy, which answers when Jira is unreachable.

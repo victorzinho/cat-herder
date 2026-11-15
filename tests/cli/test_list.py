@@ -18,7 +18,7 @@ def test_list_prints_the_matching_tickets(capsys: pytest.CaptureFixture[str]) ->
 
 @pytest.mark.parametrize(('args', 'error'), [
     pytest.param([], 'give at least one filter', id='no-filter'),
-    pytest.param(['--project', 'sat', '--project', 'web'], 'not configured projects: web', id='unknown-project'),
+    pytest.param(['--project', 'sat', '--project', 'nope'], 'not configured projects: nope', id='unknown-project'),
     pytest.param(['--assignee', 'bob'], 'not a configured person: bob', id='unknown-person'),
 ])
 def test_list_rejects_wrong_filters(capsys: pytest.CaptureFixture[str], args: list[str], error: str):

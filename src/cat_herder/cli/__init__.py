@@ -6,11 +6,13 @@ from importlib.metadata import version
 from pathlib import Path
 
 from cat_herder.cli.commands import comment, create, edit, report, show, sync
+from cat_herder.cli.commands import config as config_command
 from cat_herder.cli.commands import list as list_command
-from cat_herder.cli.config import ConfigError, WriteNotAllowed, load_config
 from cat_herder.cli.ticket_yaml import TicketYamlError
+from cat_herder.domain.config import WriteNotAllowed
 from cat_herder.services.tickets_service import KeyNotResolved
 from cat_herder.sources.errors import CredentialsMissing, SourceError, SourceUnreachable
+from cat_herder.store.config_file import ConfigError, load_config
 
 # Errors in what the tool was given or met, reported as a message. Any other is a bug, and shows its traceback.
 _REPORTED_ERRORS = (
@@ -40,6 +42,9 @@ def main(argv: list[str] | None = None) -> int:
     commands = parser.add_subparsers(title='commands', dest='command')
     comment.configure(commands.add_parser(
         'comment', help='add a comment to a ticket', description='Add a comment, in markdown, to a ticket.'
+    ))
+    config_command.configure(commands.add_parser(
+        'config', help='show the config', description='Show the config, or the part of it for a path or a project.'
     ))
     create.configure(commands.add_parser(
         'create',

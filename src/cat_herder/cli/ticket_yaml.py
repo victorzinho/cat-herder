@@ -7,9 +7,9 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
-from cat_herder.cli.yaml_format import NO_TIME_SOURCE, Block, dump, hours, load, number, timestamp
 from cat_herder.domain.config import Config, TicketOrigin
 from cat_herder.domain.ticket import Change, Comment, Link, Sprint, Ticket, TicketSummary, sprint_ids
+from cat_herder.store.yaml_format import NO_TIME_SOURCE, Block, dump, hours, load, number, timestamp
 
 _SCHEMA: dict[str, Any] = yaml.safe_load(files('cat_herder.cli').joinpath('schemas', 'ticket.schema.yaml').read_text())
 _VALIDATOR = Draft202012Validator(_SCHEMA, format_checker=Draft202012Validator.FORMAT_CHECKER)

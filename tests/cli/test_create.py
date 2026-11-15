@@ -23,7 +23,7 @@ def test_create_prints_the_new_tickets_key(jira_api: JiraApi, monkeypatch: Monke
 
 @pytest.mark.parametrize(('ticket_yaml', 'error'), [
     pytest.param('type: Task\ntitle: Alert\n', 'project is required to create a ticket', id='no-project'),
-    pytest.param('project: web\ntype: Task\ntitle: Alert\n', 'web is not in projects', id='unknown-project'),
+    pytest.param('project: nope\ntype: Task\ntitle: Alert\n', 'nope is not in projects', id='unknown-project'),
     pytest.param(
         'project: sat\ntype: Task\ntitle: Alert\nkey: SAT-1\nparent: {key: SAT-2, status: To do}\n',
         "read-only fields can't be set when creating: key, parent.status",

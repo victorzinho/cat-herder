@@ -11,8 +11,7 @@ from sqlalchemy.orm import Session
 from cat_herder.domain.ticket import SprintState
 from cat_herder.store.database import database_session, open_database
 from cat_herder.store.ticket_repository import StoredTicket, TicketRepository
-from tests.dates import parse
-from tests.factories import (
+from tests.helpers import (
     new_attachment,
     new_change,
     new_comment,
@@ -20,6 +19,7 @@ from tests.factories import (
     new_sprint,
     new_ticket,
     new_ticket_summary,
+    parse,
 )
 
 FETCHED_AT = parse('2026-11-06T12:00:00Z')

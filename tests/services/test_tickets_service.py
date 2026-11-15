@@ -17,8 +17,7 @@ from cat_herder.sources.jira.source import JiraSource
 from cat_herder.store.sprint_repository import SprintRepository
 from cat_herder.store.ticket_repository import TicketRepository
 from cat_herder.store.ticket_space_sync_repository import TicketSpaceSyncRepository
-from tests.dates import parse
-from tests.factories import new_link, new_sprint, new_ticket, new_toggl_source_config
+from tests.helpers import new_link, new_sprint, new_ticket, new_toggl_source_config, parse
 from tests.jira_api import JIRA_CONFIG, JiraApi
 
 WINDOW = timedelta(seconds=JIRA_CONFIG.fetch_window_seconds)

@@ -1,0 +1,3 @@
+sources: {}
+repositories: {tools: {workspace}/code/tools}
+projects: {}

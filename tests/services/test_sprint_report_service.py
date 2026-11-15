@@ -8,7 +8,7 @@ from cat_herder.domain.config import Config
 from cat_herder.domain.ticket import Sprint, SprintState
 from cat_herder.domain.time_entry import Hours
 from cat_herder.services.sprint_report_service import SprintOutcome, SprintReportService, TicketCount, TicketTotals
-from tests.dates import november, october
+from tests.helpers import november, october
 
 
 def test_ended_sprint_report(session: Session, config: Config, save_sprint_1: Callable[..., Sprint]) -> None:

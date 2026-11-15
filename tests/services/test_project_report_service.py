@@ -9,8 +9,7 @@ from cat_herder.domain.time_entry import Hours, TimeEntryFlag
 from cat_herder.services.project_report_service import ProjectReport, ProjectReportService
 from cat_herder.store.ticket_repository import TicketRepository
 from cat_herder.store.time_entry_repository import TimeEntryRepository
-from tests.dates import october, parse
-from tests.factories import new_change, new_ticket, new_time_entry, new_time_origin
+from tests.helpers import new_change, new_ticket, new_time_entry, new_time_origin, october, parse
 
 
 @pytest.mark.parametrize(('start', 'end', 'points'), [

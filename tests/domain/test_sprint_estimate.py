@@ -4,8 +4,7 @@ import pytest
 
 from cat_herder.domain.sprint_estimate import reestimated_by, sprint_estimate
 from cat_herder.domain.ticket import Sprint
-from tests.dates import october, parse
-from tests.factories import new_change, new_sprint, new_ticket, new_time_entry
+from tests.helpers import new_change, new_sprint, new_ticket, new_time_entry, october, parse
 
 
 @pytest.mark.parametrize(('sprint', 'estimated_hours', 'estimate'), [

@@ -3,13 +3,12 @@ import sys
 from collections.abc import Mapping
 from pathlib import Path
 
-from cat_herder.cli.config import check_writable
-from cat_herder.cli.git_repositories import current_git_repository
 from cat_herder.cli.ticket_yaml import new_ticket, read_ticket_yaml, ticket_origin
 from cat_herder.domain.config import Config
 from cat_herder.services.tickets_service import TicketsService
 from cat_herder.sources.factory import build_ticket_sources
 from cat_herder.store.database import database_session, open_database
+from cat_herder.store.git_repositories import current_git_repository
 
 
 def configure(parser: argparse.ArgumentParser) -> None:
@@ -25,7 +24,7 @@ def run(args: argparse.Namespace, config: Config, environ: Mapping[str, str], cw
     """
     document = read_ticket_yaml(args.file.read_text() if args.file else sys.stdin.read())
     origin = ticket_origin(document, config)
-    check_writable(config, origin.source)
+    config.check_writable(origin.source)
     with database_session(open_database(config.data_dir)) as session:
         git_repo = current_git_repository(config, cwd)
         tickets_service = TicketsService(config, session, build_ticket_sources(config, environ), git_repo)

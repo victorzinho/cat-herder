@@ -22,9 +22,8 @@ from cat_herder.sources.errors import SourceError, SourceUnreachable, TicketNotF
 from cat_herder.sources.jira.client import JiraClient
 from cat_herder.sources.jira.source import JiraSource
 from cat_herder.sources.ticket_source import TicketSource
-from tests.dates import parse
-from tests.factories import new_change, new_link, new_sprint, new_ticket
-from tests.jira_api import JIRA_CONFIG, JiraApi, jira_api_with_sat
+from tests.helpers import new_change, new_link, new_sprint, new_ticket, parse
+from tests.jira_api import JIRA_CONFIG, JiraApi
 
 ANA_EDIT = parse('2026-10-21T08:00:00Z')
 VICTOR_EDIT = parse('2026-10-22T07:30:00Z')
@@ -33,7 +32,7 @@ AUTOMATION_EDIT = parse('2026-10-23T06:00:00Z')
 
 def test_fetch_ticket_maps_the_issue_with_every_page_of_what_it_mentions() -> None:
     # GIVEN Jira answers with SAT-7, its comments and children in two pages each, and its changelog
-    cut = _source(jira_api_with_sat)
+    cut = _source(JiraApi())
 
     # WHEN
     ticket = cut.fetch_ticket('SAT-7')
@@ -172,7 +171,7 @@ def test_fetch_ticket_raises_source_exceptions(
 
 def test_fetch_ticket_raises_for_a_custom_field_with_several_values() -> None:
     # GIVEN a custom field configured on Jira's multi-select customfield_10050
-    cut = _source(jira_api_with_sat, replace(JIRA_CONFIG, custom_fields={'channels': 'customfield_10050'}))
+    cut = _source(JiraApi(), replace(JIRA_CONFIG, custom_fields={'channels': 'customfield_10050'}))
 
     # WHEN / THEN
     with pytest.raises(SourceError, match='Custom field channels holds'):
@@ -181,7 +180,7 @@ def test_fetch_ticket_raises_for_a_custom_field_with_several_values() -> None:
 
 def test_fetch_tickets_maps_the_spaces_tickets_as_fetch_ticket_does() -> None:
     # GIVEN the SAT space, with SAT-7 and its children SAT-8 and SAT-10, and SAT-7 fetched alone
-    cut = _source(jira_api_with_sat)
+    cut = _source(JiraApi())
     sat_7 = cut.fetch_ticket('SAT-7')
 
     # WHEN

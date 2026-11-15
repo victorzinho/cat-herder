@@ -5,8 +5,7 @@ from typing import Any
 
 import httpx
 
-from tests.dates import parse
-from tests.factories import new_toggl_source_config
+from tests.helpers import new_toggl_source_config, parse
 
 RESOURCES = Path(__file__).parent / 'resources' / 'sources' / 'toggl'
 TOGGL_HOST = 'api.track.toggl.com'

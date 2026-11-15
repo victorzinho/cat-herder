@@ -2,8 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from tests.dates import parse
-from tests.factories import new_sprint, new_time_entry
+from tests.helpers import new_sprint, new_time_entry, parse
 
 
 @pytest.mark.parametrize(('sprint_name', 'ticket_key', 'start', 'counts'), [

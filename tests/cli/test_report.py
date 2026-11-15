@@ -6,14 +6,13 @@ from time_machine import TimeMachineFixture
 from cat_herder.cli import main
 from cat_herder.store.database import database_session, open_database
 from cat_herder.store.sprint_repository import SprintRepository
-from tests.dates import parse
-from tests.factories import new_sprint
+from tests.helpers import new_sprint, parse
 
 RESOURCES = Path(__file__).parents[1] / 'resources' / 'cli'
 
 
 @pytest.mark.parametrize(('args', 'error'), [
-    pytest.param(['web'], 'not a configured project: web', id='unknown-project'),
+    pytest.param(['nope'], 'not a configured project: nope', id='unknown-project'),
     pytest.param(
         ['sat', '--from', '2026-10-02', '--to', '2026-10-01'], '--from 2026-10-02 is after --to 2026-10-01', id='range'
     ),

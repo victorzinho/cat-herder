@@ -3,13 +3,13 @@ import sys
 from collections.abc import Mapping
 from pathlib import Path
 
-from cat_herder.cli.git_repositories import current_git_repository
 from cat_herder.cli.ticket_yaml import ticket_to_yaml
 from cat_herder.domain.config import Config
 from cat_herder.services.tickets_service import TicketsService
 from cat_herder.services.time_entries_service import TimeEntriesService
 from cat_herder.sources.factory import build_ticket_sources, build_time_sources
 from cat_herder.store.database import database_session, open_database
+from cat_herder.store.git_repositories import current_git_repository
 
 
 def configure(parser: argparse.ArgumentParser) -> None:

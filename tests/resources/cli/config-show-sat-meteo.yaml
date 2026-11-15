@@ -1,0 +1,13 @@
+sources:
+  jira: {type: jira, access: full}
+  toggl: {type: toggl, access: read-only}
+repositories: {sat: {workspace}/code/sat, sat-meteo: {workspace}/code/sat-meteo}
+projects:
+  sat:
+    tickets: {source: jira, space: SAT}
+    time: {source: toggl, spaces: [SAT]}
+    repositories: [sat, sat-meteo]
+  ops:
+    tickets: {source: jira, space: OPS}
+    time: {source: toggl, spaces: [OPS]}
+    repositories: [sat-meteo]

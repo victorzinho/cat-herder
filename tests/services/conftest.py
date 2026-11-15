@@ -12,8 +12,7 @@ from cat_herder.domain.ticket import Change, Sprint, SprintState
 from cat_herder.store.database import database_session, open_database
 from cat_herder.store.ticket_repository import TicketRepository
 from cat_herder.store.time_entry_repository import TimeEntryRepository
-from tests.dates import november, october, september
-from tests.factories import (
+from tests.helpers import (
     new_change,
     new_jira_source_config,
     new_link,
@@ -23,6 +22,9 @@ from tests.factories import (
     new_time_entry,
     new_time_origin,
     new_toggl_source_config,
+    november,
+    october,
+    september,
 )
 
 

@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from cat_herder.cli.git_repositories import current_git_repository
 from cat_herder.domain.config import Config, Repository
+from cat_herder.store.git_repositories import current_git_repository
 
 
 @pytest.fixture

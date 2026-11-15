@@ -2,13 +2,17 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
-from typing import Protocol
+from typing import ClassVar, Protocol
 
 from cat_herder.domain.ticket import Ticket, TicketState, key_order
 from cat_herder.domain.time_entry import TimeEntry
 
 # How far hours assigned can be from a capacity for tickets without it being a problem, unless the config says.
 DEFAULT_CAPACITY_MARGIN_HOURS = 1
+
+
+class WriteNotAllowed(Exception):
+    """The config gives the source read-only access."""
 
 
 class Access(StrEnum):
@@ -36,12 +40,25 @@ type Credential = EnvCredential | CommandCredential
 
 
 @dataclass(frozen=True, kw_only=True)
+class SourceSummary:
+    """A source's kind, such as jira, and what cat-herder may do in it."""
+
+    slug: str
+    type: str
+    access: Access
+
+
+@dataclass(frozen=True, kw_only=True)
 class SourceConfig:
     """What every source has, whatever its kind."""
 
+    type: ClassVar[str]
     slug: str
     access: Access
     fetch_window_seconds: int
+
+    def summary(self) -> SourceSummary:
+        return SourceSummary(slug=self.slug, type=self.type, access=self.access)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -102,6 +119,7 @@ class TimeSourceConfig(SourceConfig):
 class JiraSourceConfig(TicketSourceConfig):
     """A Jira Cloud instance. A field ID left as None doesn't exist in this instance."""
 
+    type: ClassVar[str] = 'jira'
     url: str
     points_field: str | None = None
     sprints_field: str | None = None
@@ -114,6 +132,7 @@ class JiraSourceConfig(TicketSourceConfig):
 class TogglSourceConfig(TimeSourceConfig):
     """A Toggl Track workspace."""
 
+    type: ClassVar[str] = 'toggl'
     workspace: int
     token: Credential
 
@@ -168,6 +187,15 @@ class Project:
 
 
 @dataclass(frozen=True, kw_only=True)
+class ConfigPart:
+    """Some projects, with their repositories and a summary of the sources they use."""
+
+    sources: tuple[SourceSummary, ...]
+    repositories: tuple[Repository, ...]
+    projects: tuple[Project, ...]
+
+
+@dataclass(frozen=True, kw_only=True)
 class Config:
     data_dir: Path
     sources: tuple[SourceConfig, ...]
@@ -214,6 +242,28 @@ class Config:
             KeyError: if no project has that slug.
         """
         return _by_slug(self.projects, slug)
+
+    def for_project(self, slug: str) -> ConfigPart:
+        """That project, with its repositories and the sources it uses.
+
+        Raises:
+            KeyError: if no project has that slug.
+        """
+        return self._for_projects((self.project(slug),), ())
+
+    def for_repository(self, slug: str) -> ConfigPart:
+        """The projects with that repository, with their repositories and that one, and the sources they use."""
+        projects = tuple(project for project in self.projects if slug in project.repositories)
+        return self._for_projects(projects, (slug,))
+
+    def check_writable(self, source: str) -> None:
+        """Check the config lets cat-herder write to the source, before contacting it.
+
+        Raises:
+            WriteNotAllowed: if the config gives the source read-only access.
+        """
+        if self.source(source).access is not Access.FULL:
+            raise WriteNotAllowed(f'{source} is read-only in the config')
 
     def person(self, slug: str) -> Person:
         """The person with that slug.
@@ -267,6 +317,15 @@ class Config:
             project.tickets.source for project in self.projects if project.tickets and project.tickets.space == prefix
         }
         return tuple(sorted(in_projects)) or self.ticket_sources()
+
+    def _for_projects(self, projects: tuple[Project, ...], repository_slugs: tuple[str, ...]) -> ConfigPart:
+        sources = {origin.source for project in projects for origin in (project.tickets, project.time) if origin}
+        repository_slugs = (*repository_slugs, *(slug for project in projects for slug in project.repositories))
+        return ConfigPart(
+            sources=tuple(source.summary() for source in self.sources if source.slug in sources),
+            repositories=tuple(repository for repository in self.repositories if repository.slug in repository_slugs),
+            projects=projects,
+        )
 
 
 class _Slugged(Protocol):

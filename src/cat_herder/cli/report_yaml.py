@@ -1,7 +1,6 @@
 from datetime import timedelta
 from typing import Any
 
-from cat_herder.cli.yaml_format import NO_TIME_SOURCE, Block, Flow, dump, hours, number, timestamp
 from cat_herder.domain.sprint_snapshot import Blocked, SprintProblems, SprintTicket
 from cat_herder.domain.ticket import CustomValue
 from cat_herder.domain.workload import Workload
@@ -13,6 +12,7 @@ from cat_herder.services.sprint_report_service import (
     SprintFigures,
     TicketCount,
 )
+from cat_herder.store.yaml_format import NO_TIME_SOURCE, Block, Flow, dump, hours, number, timestamp
 
 SPEED_DECIMALS = 2
 

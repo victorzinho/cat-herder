@@ -1,0 +1,9 @@
+sources:
+  jira: {type: jira, access: full}
+  toggl: {type: toggl, access: read-only}
+repositories: {website: {workspace}/music/website}
+projects:
+  web:
+    tickets: {source: jira, space: WEB}
+    time: {source: toggl, spaces: [WEB]}
+    repositories: [website]

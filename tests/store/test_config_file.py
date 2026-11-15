@@ -1,10 +1,7 @@
 from pathlib import Path
 
 import pytest
-from pytest import CaptureFixture, MonkeyPatch
 
-from cat_herder.cli import main
-from cat_herder.cli.config import CONFIG_PATH_ENV, ConfigError, load_config
 from cat_herder.domain.config import (
     Access,
     CommandCredential,
@@ -18,10 +15,8 @@ from cat_herder.domain.config import (
     TimeOrigin,
     TogglSourceConfig,
 )
-from tests.dates import parse
-from tests.jira_api import JiraApi
-
-RESOURCES = Path(__file__).parent.parent / 'resources' / 'config'
+from cat_herder.store.config_file import CONFIG_PATH_ENV, ConfigError, load_config
+from tests.helpers import parse, resource
 
 
 @pytest.mark.parametrize(('environ', 'expected_path'), [
@@ -43,27 +38,25 @@ def test_load_config_reads_the_config_path(
 
 
 def test_load_config_reads_relative_paths_from_the_configs_directory(
-    tmp_path: Path, monkeypatch: MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # GIVEN the config in tmp_path/config, run from elsewhere
-    (tmp_path / 'config').mkdir()
-    (tmp_path / 'elsewhere').mkdir()
-    monkeypatch.chdir(tmp_path / 'elsewhere')
-    config_path = tmp_path / 'config' / 'config.yaml'
-    cli_config = (Path(__file__).parents[1] / 'resources' / 'cli' / 'config.yaml').read_text()
-    config_path.write_text(f'{cli_config}repositories:\n  sat: ../sat\n')
+    # GIVEN the sample workspace's config, run from elsewhere
+    workspace = resource('cli/workspace')
+    monkeypatch.chdir(tmp_path)
 
     # WHEN
-    config = load_config({CONFIG_PATH_ENV: str(config_path)})
+    config = load_config({CONFIG_PATH_ENV: str(workspace / 'config.yaml')})
 
     # THEN
-    assert config.data_dir.resolve() == tmp_path / 'config' / 'data'
-    assert config.repositories[0].path.resolve() == tmp_path / 'sat'
+    assert config.data_dir.resolve() == workspace / 'data'
+    assert {repository.slug: repository.path.resolve() for repository in config.repositories}['website'] == (
+        workspace / 'music' / 'website'
+    )
 
 
 def test_load_config_builds_every_option() -> None:
     # WHEN
-    config = load_config({CONFIG_PATH_ENV: str(RESOURCES / 'every-option.yaml')})
+    config = load_config({CONFIG_PATH_ENV: str(resource('config/every-option.yaml'))})
 
     # THEN
     assert config == Config(
@@ -153,7 +146,7 @@ def test_load_config_builds_every_option() -> None:
 )
 def test_load_config_lists_every_problem(filename: str, problems: list[str]) -> None:
     # GIVEN
-    path = RESOURCES / filename
+    path = resource(f'config/{filename}')
 
     # WHEN
     with pytest.raises(ConfigError) as error_info:
@@ -161,27 +154,3 @@ def test_load_config_lists_every_problem(filename: str, problems: list[str]) -> 
 
     # THEN
     assert str(error_info.value).splitlines() == [f'{path}: {problem}' for problem in problems]
-
-
-@pytest.mark.parametrize('command', [
-    pytest.param(['create', 'sat-7.yaml'], id='create'),
-    pytest.param(['edit', 'SAT-7', 'sat-7.yaml'], id='edit'),
-    pytest.param(['comment', 'SAT-7', 'Done'], id='comment'),
-])
-def test_writes_contact_no_source_that_the_config_makes_read_only(
-    jira_api: JiraApi, tmp_path: Path, monkeypatch: MonkeyPatch, capsys: CaptureFixture[str], command: list[str]
-) -> None:
-    # GIVEN Jira read-only in the config
-    config = tmp_path / 'config.yaml'
-    cli_config = Path(__file__).parents[1] / 'resources' / 'cli' / 'config.yaml'
-    config.write_text(cli_config.read_text().replace('access: full', 'access: read-only'))
-    monkeypatch.setenv('CAT_HERDER_CONFIG', str(config))
-    (tmp_path / 'sat-7.yaml').write_text('project: sat\ntype: Task\ntitle: Retry meteo imports\n')
-
-    # WHEN
-    exit_code = main(command)
-
-    # THEN
-    assert exit_code == 1
-    assert capsys.readouterr().err == 'cat-herder: jira is read-only in the config\n'
-    assert jira_api.requests == []

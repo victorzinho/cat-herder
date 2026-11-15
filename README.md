@@ -68,5 +68,5 @@ Then run `cat-herder --help` to see everything it can do.
 ## Learn more
 
 - [Model](docs/model.md): how the concepts fit together
-- [Config schema](src/cat_herder/cli/schemas/config.schema.yaml): every config option
+- [Config schema](src/cat_herder/store/schemas/config.schema.yaml): every config option
 - [Ticket schema](src/cat_herder/cli/schemas/ticket.schema.yaml): the format for reading, creating and editing tickets

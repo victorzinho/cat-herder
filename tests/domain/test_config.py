@@ -5,15 +5,27 @@ from pathlib import Path
 
 import pytest
 
-from cat_herder.domain.config import Config, Person, Project, SourceConfig, TicketOrigin, TimeOrigin
+from cat_herder.domain.config import (
+    Access,
+    Config,
+    ConfigPart,
+    Person,
+    Project,
+    Repository,
+    SourceConfig,
+    SourceSummary,
+    TicketOrigin,
+    TimeOrigin,
+    WriteNotAllowed,
+)
 from cat_herder.domain.ticket import Change
-from tests.dates import parse
-from tests.factories import (
+from tests.helpers import (
     new_change,
     new_jira_source_config,
     new_ticket,
     new_time_entry,
     new_toggl_source_config,
+    parse,
 )
 
 
@@ -51,6 +63,7 @@ def test_project_returns_the_one_with_that_slug() -> None:
     pytest.param(Config.time_source, 'nope', id='time-source'),
     pytest.param(Config.time_source, 'jira', id='time-source-of-a-ticket-source'),
     pytest.param(Config.project, 'nope', id='project'),
+    pytest.param(Config.for_project, 'nope', id='for-project'),
 ])
 def test_lookups_raise_key_error_for_a_slug_without_one(lookup: Callable[[Config, str], object], slug: str) -> None:
     # GIVEN
@@ -62,6 +75,54 @@ def test_lookups_raise_key_error_for_a_slug_without_one(lookup: Callable[[Config
     # WHEN / THEN
     with pytest.raises(KeyError):
         lookup(config, slug)
+
+
+def test_for_project_keeps_that_project_its_repositories_and_a_summary_of_its_sources() -> None:
+    # GIVEN
+    config = _workspace()
+
+    # WHEN
+    part = config.for_project('web')
+
+    # THEN
+    assert part == ConfigPart(
+        sources=(SourceSummary(slug='jira', type='jira', access=Access.FULL),),
+        repositories=(_repository('website'),),
+        projects=(config.project('web'),),
+    )
+
+
+@pytest.mark.parametrize(('repository', 'sources', 'projects', 'repositories'), [
+    pytest.param('sat', ('jira', 'toggl'), ('sat',), ('sat', 'sat-meteo'), id='in-a-project'),
+    pytest.param('sat-meteo', ('jira', 'toggl'), ('sat', 'ops'), ('sat', 'sat-meteo'), id='in-several-projects'),
+    pytest.param('tools', (), (), ('tools',), id='in-no-project'),
+])
+def test_for_repository_keeps_the_projects_with_it_their_repositories_and_a_summary_of_their_sources(
+    repository: str, sources: tuple[str, ...], projects: tuple[str, ...], repositories: tuple[str, ...]
+) -> None:
+    # GIVEN
+    config = _workspace()
+
+    # WHEN
+    part = config.for_repository(repository)
+
+    # THEN
+    assert part == ConfigPart(
+        sources=tuple(config.source(slug).summary() for slug in sources),
+        repositories=tuple(_repository(slug) for slug in repositories),
+        projects=tuple(config.project(slug) for slug in projects),
+    )
+
+
+def test_check_writable_rejects_a_read_only_source() -> None:
+    # GIVEN
+    config = _config(
+        sources=(new_jira_source_config(access=Access.FULL), new_toggl_source_config(access=Access.READ_ONLY))
+    )
+
+    # WHEN / THEN
+    with pytest.raises(WriteNotAllowed, match='^toggl is read-only in the config$'):
+        config.check_writable('toggl')
 
 
 def test_project_of_ticket_returns_the_project_with_tickets_in_its_space() -> None:
@@ -176,3 +237,33 @@ def _ticket_project(slug: str, source: str, space: str) -> Project:
 
 def _time_project(slug: str, source: str, *spaces: str) -> Project:
     return Project(slug=slug, tickets=None, time=TimeOrigin(source=source, spaces=spaces))
+
+
+def _workspace() -> Config:
+    """sat (jira and toggl) has sat and sat-meteo; ops (toggl) has sat-meteo; web (jira) has website; no project has
+    tools, and none uses the source unused. It has a person, which no part keeps.
+    """
+    return Config(
+        data_dir=Path('/data'),
+        sources=(
+            new_jira_source_config(slug='jira'),
+            new_toggl_source_config(slug='toggl'),
+            new_jira_source_config(slug='unused'),
+        ),
+        projects=(
+            Project(
+                slug='sat',
+                tickets=TicketOrigin(source='jira', space='SAT'),
+                time=TimeOrigin(source='toggl', spaces=('SAT',)),
+                repositories=('sat', 'sat-meteo'),
+            ),
+            replace(_time_project('ops', 'toggl', 'OPS'), repositories=('sat-meteo',)),
+            replace(_ticket_project('web', 'jira', 'WEB'), repositories=('website',)),
+        ),
+        people=(Person(slug='ana', identity_by_source={'jira': 'ana'}),),
+        repositories=tuple(_repository(slug) for slug in ('sat', 'sat-meteo', 'website', 'tools')),
+    )
+
+
+def _repository(slug: str) -> Repository:
+    return Repository(slug=slug, path=Path('/code') / slug)

@@ -7,7 +7,7 @@ from cat_herder.sources.time_source import TimeSource
 from cat_herder.sources.toggl import source
 from cat_herder.sources.toggl.client import TogglClient
 from cat_herder.sources.toggl.source import TogglSource
-from tests.dates import parse
+from tests.helpers import parse
 from tests.toggl_api import ADMIN_PROJECT, SAT_PROJECT, TOGGL_CONFIG, TogglApi
 
 OCTOBER = (parse('2026-10-01T00:00:00Z'), parse('2026-11-01T00:00:00Z'))

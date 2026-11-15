@@ -3,8 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 
 from cat_herder.domain.ticket import Sprint, SprintState
-from tests.dates import october, parse, september
-from tests.factories import new_change, new_sprint, new_ticket
+from tests.helpers import new_change, new_sprint, new_ticket, october, parse, september
 
 
 def test_as_of_undoes_the_changes_after_then() -> None:

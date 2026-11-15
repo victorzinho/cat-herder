@@ -13,8 +13,7 @@ from cat_herder.services.sprint_planning_service import SprintPlanningService
 from cat_herder.store.sprint_repository import SprintRepository
 from cat_herder.store.ticket_repository import TicketRepository
 from cat_herder.store.time_entry_repository import TimeEntryRepository
-from tests.dates import august, november, october, september
-from tests.factories import new_sprint, new_ticket, new_time_entry, new_time_origin
+from tests.helpers import august, new_sprint, new_ticket, new_time_entry, new_time_origin, november, october, september
 
 
 def test_snapshot_lists_whoever_holds_its_tickets_until_it_ends(

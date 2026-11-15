@@ -1,6 +1,11 @@
 from dataclasses import replace
-from datetime import timedelta
+from datetime import datetime, timedelta
+from importlib.resources import files
+from pathlib import Path
 from typing import Any
+
+import yaml
+from jsonschema import Draft202012Validator
 
 from cat_herder.domain.config import Access, EnvCredential, JiraSourceConfig, TimeOrigin, TogglSourceConfig
 from cat_herder.domain.ticket import (
@@ -14,7 +19,36 @@ from cat_herder.domain.ticket import (
     TicketSummary,
 )
 from cat_herder.domain.time_entry import TimeEntry
-from tests.dates import parse
+
+
+def parse(value: str) -> datetime:
+    """An aware datetime from an ISO string with its offset, such as 2026-10-01T09:00:00Z.
+
+    Raises:
+        ValueError: if the string isn't ISO, or has no offset.
+    """
+    parsed = datetime.fromisoformat(value)
+    if not parsed.tzinfo:
+        raise ValueError(f'{value} has no offset')
+    return parsed
+
+
+def august(day: int) -> datetime:
+    """That day of August 2026, at 09:00 UTC, as for the other months."""
+    return parse(f'2026-08-{day:02}T09:00:00Z')
+
+
+def september(day: int) -> datetime:
+    return parse(f'2026-09-{day:02}T09:00:00Z')
+
+
+def october(day: int) -> datetime:
+    return parse(f'2026-10-{day:02}T09:00:00Z')
+
+
+def november(day: int) -> datetime:
+    return parse(f'2026-11-{day:02}T09:00:00Z')
+
 
 # Valid defaults. A test sets every field it asserts on or depends on, and leaves the rest to these.
 _DATE = parse('2026-10-01T09:00:00Z')
@@ -114,3 +148,16 @@ def new_time_entry(hours: float | None = None, **overrides: Any) -> TimeEntry:
 
 def new_time_origin(**overrides: Any) -> TimeOrigin:
     return replace(_TIME_ORIGIN, **overrides)
+
+
+def resource(name: str) -> Path:
+    """The test resource at that path, relative to tests/resources, such as cli/workspace/config.yaml."""
+    return Path(__file__).parent / 'resources' / name
+
+
+def config_schema() -> Draft202012Validator:
+    """A validator for the config's schema, checking formats too."""
+    return Draft202012Validator(
+        yaml.safe_load(files('cat_herder.store').joinpath('schemas', 'config.schema.yaml').read_text()),
+        format_checker=Draft202012Validator.FORMAT_CHECKER,
+    )

@@ -18,7 +18,7 @@ from cat_herder.store.ticket_repository import TicketRepository
 from cat_herder.store.ticket_space_sync_repository import TicketSpaceSyncRepository
 from cat_herder.store.time_entry_repository import TimeEntryRepository
 from cat_herder.store.time_source_sync_repository import TimeSourceSync, TimeSourceSyncRepository
-from tests.factories import new_sprint, new_ticket, new_time_entry
+from tests.helpers import new_sprint, new_ticket, new_time_entry
 from tests.jira_api import JIRA_CONFIG
 from tests.toggl_api import ADMIN_PROJECT, SAT_PROJECT, TOGGL_CONFIG, TogglApi
 
