@@ -17,6 +17,10 @@ dependencies = [
     "sqlalchemy>=2.1.8",
 ]
 
+[project.urls]
+Repository = "https://github.com/victorzinho/cat-herder"
+Issues = "https://github.com/victorzinho/cat-herder/issues"
+
 [project.scripts]
 cat-herder = "cat_herder.cli:main"
 

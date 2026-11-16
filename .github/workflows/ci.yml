@@ -2,17 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
 
 permissions:
   contents: read
 
 jobs:
-  check:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v7
-      - run: uv tool install rust-just
-      - run: just check
+  ci:
+    uses: victorzinho/bosun/.github/workflows/python-uv-ci.yml@v0.1.0rc1

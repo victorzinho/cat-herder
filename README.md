@@ -59,7 +59,7 @@ Then run `cat-herder --help` to see everything it can do.
 
 ## Development
 
-`just --list` shows the tasks. `just check` runs what CI runs.
+`just --list` shows the tasks. `just verify` runs what CI runs.
 
 - Every meaningful commit adds to `## Unreleased` in `CHANGELOG.md`.
 - Every breaking change also adds what to do to `MIGRATIONS.md`.

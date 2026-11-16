@@ -1,8 +1,4 @@
-check:
-    uv run --locked ruff check
-    uv run --locked basedpyright
-    uv run --locked lint-imports
-    uv run --locked pytest --cov
+import '~/.config/bosun/recipes/python-uv.just'
 
 # Create a migration to fill in with SQL, e.g. `just migration "Add time entries"`
 migration message:
