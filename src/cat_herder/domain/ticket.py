@@ -198,6 +198,29 @@ class Ticket:
         return self.in_sprint_as_of(sprint, sprint.start) or (sprint.source == self.source and added)
 
 
+@dataclass(frozen=True, kw_only=True)
+class AllowedValues:
+    """The values a ticket's fields can take, in order. Empty where they aren't known.
+
+    Types, statuses, priorities, components, relations and custom fields are those the source takes, or, if
+    from_local_copy, those the local copy's tickets hold. Labels are always those the local copy's tickets hold, and
+    sprints those in the local copy that haven't ended.
+    """
+
+    types: tuple[str, ...] = ()
+    statuses: tuple[str, ...] = ()
+    priorities: tuple[str, ...] = ()
+    components: tuple[str, ...] = ()
+    relations: tuple[str, ...] = ()
+    custom_fields: dict[str, tuple[str, ...]] = field(default_factory=dict[str, tuple[str, ...]])
+    """Values by the custom field's name in the config."""
+    assignees: tuple[str, ...] = ()
+    """Person slugs."""
+    sprints: tuple[str, ...] = ()
+    labels: tuple[str, ...] = ()
+    from_local_copy: bool = False
+
+
 def key_order(key: str) -> tuple[str | int, ...]:
     """Sorts keys as their sources do, with SAT-8 before SAT-10."""
     return tuple(int(part) if part.isdigit() else part for part in re.split(r'(\d+)', key))

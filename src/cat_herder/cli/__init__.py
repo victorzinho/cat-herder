@@ -5,7 +5,7 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
-from cat_herder.cli.commands import comment, create, edit, report, show, sync
+from cat_herder.cli.commands import comment, create, edit, report, show, sync, template
 from cat_herder.cli.commands import config as config_command
 from cat_herder.cli.commands import list as list_command
 from cat_herder.cli.ticket_yaml import TicketYamlError
@@ -49,12 +49,18 @@ def main(argv: list[str] | None = None) -> int:
     create.configure(commands.add_parser(
         'create',
         help='create a ticket from YAML',
-        description='Create a ticket from YAML in the shape show prints, and print its key.',
+        description=(
+            'Create a ticket from YAML in the shape show prints, and print its key. '
+            'template --project prints one to fill in.'
+        ),
     ))
     edit.configure(commands.add_parser(
         'edit',
         help='edit a ticket from YAML',
-        description='Edit a ticket from YAML in the shape show prints, writing only the fields that differ.',
+        description=(
+            'Edit a ticket from YAML in the shape show prints, writing only the fields that differ. '
+            'template <key> prints one to change.'
+        ),
     ))
     list_command.configure(commands.add_parser(
         'list',
@@ -69,6 +75,15 @@ def main(argv: list[str] | None = None) -> int:
         'sync',
         help='bring the configured spaces into the local copy',
         description='Bring the configured spaces into the local copy, fetching what changed since the last sync.',
+    ))
+    template.configure(commands.add_parser(
+        'template',
+        help='print a ticket YAML to create or edit a ticket from',
+        description=(
+            'Print a ticket YAML to create a ticket in a project from, or to edit a ticket from, with comments '
+            "giving each field's description and values. Values come from the source, or from the local copy if "
+            "it can't be reached."
+        ),
     ))
     args = parser.parse_args(argv)
     if not args.command:

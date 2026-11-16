@@ -61,7 +61,7 @@ properties:
         minimum: 0
       - const: no time source
   parent:
-    description: The parent ticket. To change it, provide only `key`.
+    description: 'The parent ticket. To change it, provide only `key`, as `{key: SAT-2}`.'
     oneOf:
       - type: 'null'
       - $ref: '#/$defs/ticket_reference'
@@ -98,7 +98,11 @@ properties:
     description: Markdown.
   links:
     type: array
-    description: Replaced whole when edited. Links that aren't stored, such as those to a space not in the config, are left untouched.
+    description: |
+      Each as `{from: SAT-7, relation: blocks, to: SAT-9}`. Both ends are required, except when creating, where a
+      missing end means the new ticket.
+      Replaced whole when edited. Links that aren't stored, such as those to a space not in the config, are left
+      untouched.
     items: {$ref: '#/$defs/link'}
   comments:
     type: array
@@ -180,7 +184,6 @@ $defs:
     type: object
     description: |
       Reads as a sentence: "`from` `relation` `to`". Keeps the source's direction, because free text can't be inverted.
-      Both ends are required, except when creating, where a missing end means the new ticket.
     additionalProperties: false
     required: [relation]
     anyOf:

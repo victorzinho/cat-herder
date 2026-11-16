@@ -1,0 +1,38 @@
+[
+  {
+    "id": "10006",
+    "name": "Task",
+    "statuses": [
+      {
+        "id": "1",
+        "name": "To do"
+      },
+      {
+        "id": "3",
+        "name": "In progress"
+      },
+      {
+        "id": "10001",
+        "name": "Done"
+      }
+    ]
+  },
+  {
+    "id": "10008",
+    "name": "Bug",
+    "statuses": [
+      {
+        "id": "1",
+        "name": "To do"
+      },
+      {
+        "id": "10002",
+        "name": "Fixing"
+      },
+      {
+        "id": "10001",
+        "name": "Done"
+      }
+    ]
+  }
+]

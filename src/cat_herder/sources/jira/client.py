@@ -38,6 +38,10 @@ class JiraClient:
     def get(self, path: str, params: dict[str, str | int] | None = None) -> JsonObject:
         return self._send(self._http.build_request('GET', path, params=params))
 
+    def get_list(self, path: str) -> list[JsonObject]:
+        """GET for the paths that answer with a list."""
+        return self._send(self._http.build_request('GET', path))
+
     def post(self, path: str, body: JsonObject) -> JsonObject:
         return self._send(self._http.build_request('POST', path, json=body))
 
@@ -47,7 +51,7 @@ class JiraClient:
     def delete(self, path: str) -> JsonObject:
         return self._send(self._http.build_request('DELETE', path))
 
-    def _send(self, request: httpx.Request) -> JsonObject:
+    def _send(self, request: httpx.Request) -> Any:
         described = f'{request.method} {request.url}'
         self._auth = self._auth or httpx.BasicAuth(*self._credentials())
         try:

@@ -51,6 +51,8 @@ def test_any_other_error_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
     pytest.param(['create', str(resource('cli/ticket-sat.yaml'))], id='create'),
     pytest.param(['edit', 'SAT-7', str(resource('cli/ticket-sat.yaml'))], id='edit'),
     pytest.param(['comment', 'SAT-7', 'Done'], id='comment'),
+    pytest.param(['template', '--project', 'sat'], id='create-template'),
+    pytest.param(['template', 'SAT-7'], id='edit-template'),
 ])
 def test_writes_to_read_only_make_no_requests(
     jira_api: JiraApi, tmp_path: Path, capsys: pytest.CaptureFixture[str], command: list[str]

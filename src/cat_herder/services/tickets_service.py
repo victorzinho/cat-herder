@@ -1,12 +1,13 @@
 import logging
 from collections.abc import Iterable, Sequence
 from contextlib import suppress
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
 from cat_herder.domain.config import Config, TicketOrigin
-from cat_herder.domain.ticket import Sprint, SprintState, Ticket, key_order
+from cat_herder.domain.ticket import AllowedValues, Sprint, SprintState, Ticket, key_order
 from cat_herder.sources.errors import SourceError, SourceUnreachable, TicketNotFound
 from cat_herder.sources.ticket_source import TicketSource
 from cat_herder.store.sprint_repository import SprintRepository
@@ -123,6 +124,43 @@ class TicketsService:
         """
         return self._resolve(key)[0]
 
+    def creatable_values(self, origin: TicketOrigin, type_name: str | None) -> AllowedValues:
+        """The values a new ticket of that type, or of any type, can take in the origin's space.
+
+        Those its source takes, as TicketSource.creatable_values gives them, or, if the source can't be reached, those
+        the local copy holds, with a warning. Either way, with the labels and the sprints not ended from the local
+        copy, and the people with an identity in the source.
+
+        Raises:
+            SourceError: if the space has no type with that name, or the source answers with any other error.
+        """
+        local_copy_values = self._ticket_repository.values_in_space(origin.source, origin.space, type_name)
+        try:
+            allowed_values = self._source_by_slug[origin.source].creatable_values(origin.space, type_name)
+        except SourceUnreachable:
+            synced_at = self._ticket_space_sync_repository.get_last_sync(origin.source, origin.space)
+            _warn_local_copy(origin.source, 'unreachable', origin.space, synced_at)
+            allowed_values = local_copy_values
+        return self._fill_allowed_values(allowed_values, origin.source, local_copy_values.labels)
+
+    def editable_values(self, ticket: Ticket) -> AllowedValues:
+        """The values the ticket can take now, as creatable_values gives them, with only the statuses it can go to.
+
+        Those the local copy holds are those of the tickets of its type in its space, statuses included.
+
+        Raises:
+            TicketNotFound: if the source doesn't have the ticket.
+            SourceError: if the source answers with any other error.
+        """
+        local_copy_values = self._ticket_repository.values_in_space(ticket.source, ticket.space, ticket.type)
+        try:
+            allowed_values = self._source_by_slug[ticket.source].editable_values(ticket.key)
+        except SourceUnreachable:
+            synced_at = self._ticket_space_sync_repository.get_last_sync(ticket.source, ticket.space)
+            _warn_local_copy(ticket.source, 'unreachable', ticket.space, synced_at)
+            allowed_values = local_copy_values
+        return self._fill_allowed_values(allowed_values, ticket.source, local_copy_values.labels)
+
     def create(self, ticket: Ticket) -> str:
         """Create the ticket in its source, as TicketSource.create_ticket does, and return its key.
 
@@ -171,6 +209,19 @@ class TicketsService:
         self._source_by_slug[source].add_comment(source_key, body)
         with suppress(SourceError, SourceUnreachable):
             self._fetch(source, source_key)
+
+    def _fill_allowed_values(
+        self, allowed_values: AllowedValues, source: str, labels: tuple[str, ...]
+    ) -> AllowedValues:
+        # The allowed values with what no source gives, wherever the rest came from: the people with an identity in
+        # the source, the source's sprints not ended in the local copy, as create and edit only take those, and the
+        # labels.
+        return replace(
+            allowed_values,
+            assignees=tuple(person.slug for person in self._config.people if source in person.identity_by_source),
+            sprints=tuple(sprint.name for sprint in self._sprint_repository.find_not_ended(source)),
+            labels=labels,
+        )
 
     def _assignee_by_source(self, person_slug: str) -> dict[str, str]:
         person = self._config.person(person_slug)

@@ -1,0 +1,59 @@
+{
+  "startAt": 0,
+  "maxResults": 100,
+  "total": 3,
+  "fields": [
+    {
+      "fieldId": "priority",
+      "schema": {
+        "type": "priority",
+        "system": "priority"
+      },
+      "allowedValues": [
+        {
+          "id": "1",
+          "name": "Highest"
+        },
+        {
+          "id": "2",
+          "name": "High"
+        }
+      ]
+    },
+    {
+      "fieldId": "components",
+      "schema": {
+        "type": "array",
+        "items": "component",
+        "system": "components"
+      },
+      "allowedValues": [
+        {
+          "id": "10000",
+          "name": "import"
+        },
+        {
+          "id": "10001",
+          "name": "publish"
+        }
+      ]
+    },
+    {
+      "fieldId": "customfield_10043",
+      "schema": {
+        "type": "option"
+      },
+      "allowedValues": [
+        {
+          "value": "🔥"
+        },
+        {
+          "value": "🕯️"
+        },
+        {
+          "value": "☢️"
+        }
+      ]
+    }
+  ]
+}

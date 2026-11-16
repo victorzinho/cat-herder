@@ -7,7 +7,7 @@ from functools import partial
 from urllib.parse import quote
 
 from cat_herder.domain.config import JiraSourceConfig
-from cat_herder.domain.ticket import CustomValue, Link, Sprint, SprintState, Ticket
+from cat_herder.domain.ticket import AllowedValues, CustomValue, Link, Sprint, SprintState, Ticket
 from cat_herder.sources.errors import SourceError, SourceUnreachable, TicketNotFound, WriteIncomplete
 from cat_herder.sources.jira import mapping
 from cat_herder.sources.jira.adf import markdown_to_adf
@@ -120,6 +120,41 @@ class JiraSource:
         ]
         _write_all(edited.key, writes)
 
+    def creatable_values(self, space: str, type_name: str | None) -> AllowedValues:
+        """See TicketSource.creatable_values. Statuses are those of the type's workflow."""
+        types = self._issue_types(space)
+        requested_types = [self._issue_type(space, types, type_name)] if type_name else types
+        field_metadata = [
+            (metadata['fieldId'], metadata)
+            for issue_type in requested_types
+            for metadata in self._pages(_create_meta_path(space, issue_type['id']), 'fields')
+        ]
+        requested_type_names = {issue_type['name'] for issue_type in requested_types}
+        statuses_by_type = self._client.get_list(f'project/{quote(space, safe="")}/statuses')
+        return self._allowed_values(
+            field_metadata,
+            types=_unique(issue_type['name'] for issue_type in types),
+            statuses=_unique(
+                status['name']
+                for issue_type in statuses_by_type
+                if issue_type['name'] in requested_type_names
+                for status in issue_type['statuses']
+            ),
+        )
+
+    def editable_values(self, key: str) -> AllowedValues:
+        """See TicketSource.editable_values. Types are those it can change to."""
+        try:
+            field_metadata_by_id: JsonObject = self._client.get(f'issue/{quote(key, safe="")}/editmeta')['fields']
+        except JiraNotFound as error:
+            raise TicketNotFound(f'{self._config.slug} has no ticket {key}') from error
+        transitions: list[JsonObject] = self._client.get(f'issue/{quote(key, safe="")}/transitions')['transitions']
+        return self._allowed_values(
+            list(field_metadata_by_id.items()),
+            types=_allowed(field_metadata_by_id.items(), 'issuetype', 'name'),
+            statuses=_unique(transition['to']['name'] for transition in transitions),
+        )
+
     def add_comment(self, key: str, body: str) -> None:
         """See TicketSource.add_comment."""
         try:
@@ -135,13 +170,35 @@ class JiraSource:
 
     def _creatable_fields(self, space: str, type_name: str) -> JsonObject:
         # The fields a ticket of that type can be created with, by ID, as editmeta gives them for an existing one.
-        types = self._pages(f'issue/createmeta/{quote(space, safe="")}/issuetypes', 'issueTypes')
-        type_id = next((issue_type['id'] for issue_type in types if issue_type['name'] == type_name), None)
-        if not type_id:
+        issue_type = self._issue_type(space, self._issue_types(space), type_name)
+        return {field['fieldId']: field for field in self._pages(_create_meta_path(space, issue_type['id']), 'fields')}
+
+    def _issue_types(self, space: str) -> list[JsonObject]:
+        return self._pages(_create_meta_path(space), 'issueTypes')
+
+    def _issue_type(self, space: str, types: list[JsonObject], type_name: str) -> JsonObject:
+        issue_type = next((issue_type for issue_type in types if issue_type['name'] == type_name), None)
+        if not issue_type:
             names = ', '.join(issue_type['name'] for issue_type in types)
             raise SourceError(f'{space} in {self._config.slug} has no type {type_name}, only: {names}')
-        fields = self._pages(f'issue/createmeta/{quote(space, safe="")}/issuetypes/{type_id}', 'fields')
-        return {field['fieldId']: field for field in fields}
+        return issue_type
+
+    def _allowed_values(
+        self, field_metadata: list[tuple[str, JsonObject]], types: tuple[str, ...], statuses: tuple[str, ...]
+    ) -> AllowedValues:
+        # field_metadata pairs each field ID with its metadata, as createmeta and editmeta give them, with an ID
+        # repeated for each type it comes from.
+        return AllowedValues(
+            types=types,
+            statuses=statuses,
+            priorities=_allowed(field_metadata, 'priority', 'name'),
+            components=_allowed(field_metadata, 'components', 'name'),
+            relations=tuple(self._link_type_by_relation(())),
+            custom_fields={
+                name: _allowed(field_metadata, field_id, 'value')
+                for name, field_id in self._config.custom_fields.items()
+            },
+        )
 
     def _field_writes(self, ticket: Ticket, edited: Ticket) -> list['_Write']:
         def editable() -> JsonObject:
@@ -347,6 +404,25 @@ def _custom_value(name: str, value: CustomValue, field: JsonObject) -> object:
             return value
         case other:
             raise SourceError(f'{name} is a {other} field, but only single text, number or option values are carried')
+
+
+def _create_meta_path(space: str, type_id: str | None = None) -> str:
+    path = f'issue/createmeta/{quote(space, safe="")}/issuetypes'
+    return f'{path}/{type_id}' if type_id else path
+
+
+def _allowed(field_metadata: Iterable[tuple[str, JsonObject]], field_id: str, name_key: str) -> tuple[str, ...]:
+    # The field's allowed values, by their name_key, each once in the order the metadata gives them.
+    return _unique(
+        allowed_value[name_key]
+        for metadata_field_id, metadata in field_metadata
+        if metadata_field_id == field_id
+        for allowed_value in metadata.get('allowedValues', [])
+    )
+
+
+def _unique(values: Iterable[str]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(values))
 
 
 def _link_order(link: Link) -> tuple[str, str, str]:

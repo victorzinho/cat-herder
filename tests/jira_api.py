@@ -20,7 +20,8 @@ class JiraApi:
 
     Searching the SAT space finds SAT-7, with one of its two comments, and its child SAT-8; searching any other space
     finds nothing. SAT-7 takes every write: its size is an option and its team a text, and it can only go to Done.
-    Creating a ticket makes SAT-11, a Task like SAT-7, with nothing but its title.
+    Creating a ticket makes SAT-11, a Task like SAT-7, with nothing but its title. SAT's Tasks and Bugs take different
+    priorities, components, sizes and statuses.
 
     It fails to connect while unreachable, and a request whose method and path, as in "PUT issue/SAT-7", is in
     rejecting gets a 400.
@@ -61,6 +62,10 @@ class JiraApi:
                 resource = 'createmeta-issuetypes.json'
             case 'GET', 'issue/createmeta/SAT/issuetypes/10006':
                 resource = 'createmeta-task.json'
+            case 'GET', 'issue/createmeta/SAT/issuetypes/10008':
+                resource = 'createmeta-bug.json'
+            case 'GET', 'project/SAT/statuses':
+                resource = 'project-sat-statuses.json'
             case 'POST', 'issue':
                 return httpx.Response(201, json={'id': '10011', 'key': 'SAT-11'})
             case 'GET', 'issue/SAT-11':

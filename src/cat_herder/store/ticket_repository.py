@@ -1,4 +1,4 @@
-from collections.abc import Collection, Mapping, Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -7,9 +7,20 @@ from sqlalchemy import Column, ForeignKey, Integer, Table, UniqueConstraint, and
 from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
 
 from cat_herder.domain.config import TicketOrigin
-from cat_herder.domain.ticket import Attachment, Change, Comment, Link, SprintState, Ticket, TicketSummary, key_order
+from cat_herder.domain.ticket import (
+    AllowedValues,
+    Attachment,
+    Change,
+    Comment,
+    Link,
+    SprintState,
+    Ticket,
+    TicketSummary,
+    key_order,
+)
 from cat_herder.store.base import Base
 from cat_herder.store.sprint_repository import SprintRepository, SprintRow, sprint_to_domain
+from cat_herder.store.yaml_format import number
 
 ticket_sprints = Table(
     'ticket_sprints',
@@ -192,6 +203,39 @@ class TicketRepository:
         keys = select(TicketRow.key).where(TicketRow.source == source, TicketRow.space == space)
         return set(self._session.scalars(keys))
 
+    def values_in_space(self, source: str, space: str, type_name: str | None = None) -> AllowedValues:
+        """The values the full tickets stored for that space hold, each once and sorted, from the local copy.
+
+        Types, labels and the relations of the links touching them come from every ticket. Statuses, priorities,
+        components and custom fields come from those of that type, or from every ticket without one.
+        """
+        ticket_rows = self._session.scalars(
+            select(TicketRow).where(
+                TicketRow.source == source, TicketRow.space == space, TicketRow.fetched_at.is_not(None)
+            )
+        ).all()
+        rows_of_type = [row for row in ticket_rows if type_name in (None, row.type)]
+        ticket_ids = [row.id for row in ticket_rows]
+        relations = self._session.scalars(
+            select(LinkRow.relation).where(or_(LinkRow.from_id.in_(ticket_ids), LinkRow.to_id.in_(ticket_ids)))
+        )
+        custom_field_values: dict[str, set[str]] = {}
+        for row in rows_of_type:
+            for name, value in (row.custom_fields or {}).items():
+                custom_field_values.setdefault(name, set()).update([str(number(value))] if value is not None else [])
+        return AllowedValues(
+            types=_sorted(row.type for row in ticket_rows),
+            statuses=_sorted(row.status for row in rows_of_type),
+            priorities=_sorted(row.priority for row in rows_of_type),
+            components=_sorted(component for row in rows_of_type for component in row.components or ()),
+            relations=_sorted(relations),
+            custom_fields={
+                name: tuple(sorted(field_values)) for name, field_values in custom_field_values.items()
+            },
+            labels=_sorted(label for row in ticket_rows for label in row.labels or ()),
+            from_local_copy=True,
+        )
+
     def _ticket(self, row: TicketRow) -> Ticket:
         links = self._session.scalars(
             select(LinkRow).where(or_(LinkRow.from_id == row.id, LinkRow.to_id == row.id)).order_by(LinkRow.id)
@@ -295,6 +339,11 @@ def _change_from_domain(change: Change) -> ChangeRow:
     return ChangeRow(
         field=change.field, author=change.author, before=change.before, after=change.after, date=change.date
     )
+
+
+def _sorted(values: Iterable[str | None]) -> tuple[str, ...]:
+    # Each value once, without None.
+    return tuple(sorted({value for value in values if value is not None}))
 
 
 def _link_to_domain(row: LinkRow) -> Link:

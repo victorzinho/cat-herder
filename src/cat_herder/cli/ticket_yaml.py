@@ -8,13 +8,15 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from cat_herder.domain.config import Config, TicketOrigin
-from cat_herder.domain.ticket import Change, Comment, Link, Sprint, Ticket, TicketSummary, sprint_ids
+from cat_herder.domain.ticket import AllowedValues, Change, Comment, Link, Sprint, Ticket, TicketSummary, sprint_ids
 from cat_herder.store.yaml_format import NO_TIME_SOURCE, Block, dump, hours, load, number, timestamp
 
 _SCHEMA: dict[str, Any] = yaml.safe_load(files('cat_herder.cli').joinpath('schemas', 'ticket.schema.yaml').read_text())
 _VALIDATOR = Draft202012Validator(_SCHEMA, format_checker=Draft202012Validator.FORMAT_CHECKER)
 _READ_ONLY = {name for name, field in _SCHEMA['properties'].items() if field.get('readOnly')}
 _READ_ONLY_IN_EDIT = _READ_ONLY | {'project'}
+_WRITABLE = [name for name in _SCHEMA['properties'] if name not in _READ_ONLY]
+_IN_LOCAL_COPY = 'In the local copy'
 _REPLACED_WHOLE = {'sprints', 'labels', 'components'}
 
 
@@ -178,6 +180,45 @@ def edited_ticket(
     return replace(ticket, **values)
 
 
+def create_template(project: str, type_name: str | None, allowed_values: AllowedValues) -> str:
+    """A ticket YAML for create, with every writable field empty but the project and the type, if given.
+
+    Each field comes after comments with its description in the ticket schema and its allowed values, labelled as in
+    the local copy when they come from it. The custom fields are those in allowed_values.
+    """
+    prefilled_fields: dict[str, Any] = {
+        'title': '',
+        'project': project,
+        'type': type_name or '',
+        'status': '',
+        'custom_fields': dict.fromkeys(allowed_values.custom_fields),
+        'sprints': [],
+        'labels': [],
+        'components': [],
+        'links': [],
+    }
+    document = {name: prefilled_fields.get(name) for name in _WRITABLE}
+    header = (
+        f'A new ticket in {project}, for cat-herder create. Fill in at least the title and type; other empty fields '
+        'are left to the source.'
+    )
+    return _template(header, document, allowed_values, statuses_label='Values')
+
+
+def edit_template(ticket: Ticket, config: Config, allowed_values: AllowedValues) -> str:
+    """A ticket YAML for edit, with the ticket's writable fields as they are, but the project.
+
+    The parent and the links have only the fields that can be written. Comments are as in create_template, but the
+    statuses, which are those the ticket can go to now unless they come from the local copy.
+    """
+    shown = _shown(ticket, config, spent_hours=None, brief=True, changes=False, sprint_names={})
+    document = {name: shown[name] for name in _WRITABLE if name != 'project'}
+    document['parent'] = {'key': shown['parent']['key']} if shown['parent'] else None
+    document['links'] = [{end: link[end] for end in ('from', 'relation', 'to')} for link in shown['links']]
+    header = f'{shown["key"]} as it is now, for cat-herder edit {shown["key"]}. Fields left out stay as they are.'
+    return _template(header, document, allowed_values, statuses_label='Reachable now')
+
+
 def _shown(
     ticket: Ticket,
     config: Config,
@@ -224,6 +265,48 @@ def _shown(
         names = dict(sprint_names) | {sprint.id: sprint.name for sprint in ticket.sprints}
         document['changes'] = [_change(config, ticket.source, change, names) for change in ticket.changes]
     return document
+
+
+def _template(header: str, document: Mapping[str, Any], allowed_values: AllowedValues, statuses_label: str) -> str:
+    from_local_copy = allowed_values.from_local_copy
+    values_label = _IN_LOCAL_COPY if from_local_copy else 'Values'
+    labelled_values_by_name = {
+        'type': (values_label, allowed_values.types),
+        'status': (_IN_LOCAL_COPY if from_local_copy else statuses_label, allowed_values.statuses),
+        'priority': (values_label, allowed_values.priorities),
+        'assignee': ('People', allowed_values.assignees),
+        'sprints': ('Not ended', allowed_values.sprints),
+        'labels': (_IN_LOCAL_COPY, allowed_values.labels),
+        'components': (values_label, allowed_values.components),
+        'links': (f'Relations{" in the local copy" if from_local_copy else ""}', allowed_values.relations),
+    }
+    lines = [f'# {header}']
+    for name, value in document.items():
+        description = _SCHEMA['properties'][name].get('description', '')
+        lines += _comments(description, *labelled_values_by_name.get(name, ('', ())))
+        if name != 'custom_fields' or not value:
+            lines += _yaml_lines(name, value)
+            continue
+        lines.append(f'{name}:')
+        for custom_name, custom_value in value.items():
+            custom_field_values = allowed_values.custom_fields.get(custom_name, ())
+            custom_field_lines = [
+                *_comments('', values_label, custom_field_values),
+                *_yaml_lines(custom_name, custom_value),
+            ]
+            lines += [f'  {line}' for line in custom_field_lines]
+    return '\n'.join(lines) + '\n'
+
+
+def _comments(description: str, label: str, field_values: Iterable[str]) -> list[str]:
+    lines = description.strip().splitlines()
+    if joined_values := ', '.join(field_values):
+        lines.append(f'{label}: {joined_values}')
+    return [f'# {line}' for line in lines]
+
+
+def _yaml_lines(name: str, value: Any) -> list[str]:
+    return dump(Block({name: value})).splitlines()
 
 
 def _same(name: str, value: Any, shown: Any) -> bool:

@@ -1,8 +1,43 @@
 {
   "startAt": 0,
   "maxResults": 100,
-  "total": 2,
+  "total": 4,
   "fields": [
+    {
+      "fieldId": "priority",
+      "schema": {
+        "type": "priority",
+        "system": "priority"
+      },
+      "allowedValues": [
+        {
+          "id": "2",
+          "name": "High"
+        },
+        {
+          "id": "3",
+          "name": "Medium"
+        },
+        {
+          "id": "4",
+          "name": "Low"
+        }
+      ]
+    },
+    {
+      "fieldId": "components",
+      "schema": {
+        "type": "array",
+        "items": "component",
+        "system": "components"
+      },
+      "allowedValues": [
+        {
+          "id": "10000",
+          "name": "import"
+        }
+      ]
+    },
     {
       "fieldId": "customfield_10043",
       "schema": {

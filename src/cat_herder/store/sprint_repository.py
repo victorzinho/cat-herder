@@ -70,6 +70,17 @@ class SprintRepository:
         query = select(SprintRow).where(SprintRow.source == source, SprintRow.state == SprintState.ENDED.value)
         return [sprint_to_domain(row) for row in self._session.scalars(query.order_by(SprintRow.actual_end.desc()))]
 
+    def find_not_ended(self, source: str) -> list[Sprint]:
+        """The source's sprints that haven't ended, the one in progress first, then by start and name."""
+        query = select(SprintRow).where(SprintRow.source == source, SprintRow.state != SprintState.ENDED.value)
+        order = (
+            SprintRow.state != SprintState.IN_PROGRESS.value,
+            SprintRow.start.is_(None),
+            SprintRow.start,
+            SprintRow.name,
+        )
+        return [sprint_to_domain(row) for row in self._session.scalars(query.order_by(*order))]
+
     def exists(self, name: str) -> bool:
         """Whether a sprint with that name is stored, in any source."""
         return self._session.scalars(select(SprintRow.id).where(SprintRow.name == name)).first() is not None

@@ -1,0 +1,44 @@
+# SAT-7 as it is now, for cat-herder edit SAT-7. Fields left out stay as they are.
+title: Retry failed meteo imports
+# The source's name for the ticket type.
+# Values: Task, Bug
+type: Task
+# The source's name for the status, with no translation.
+# Reachable now: Done
+status: In progress
+# The source's name for the priority, with no translation. Left out when creating, the source's default.
+# Values: Highest, High, Medium
+priority: High
+# Person slug. `unknown (<source ID>)` when the source's user has no entry in `people`, which can't be written.
+# People: ana
+assignee: ana
+points: 5
+# Independent from `points`, and either can be empty.
+estimated_hours: 5
+# The fields in the source's `custom_fields`, by name. A name that isn't configured explodes.
+# When editing, a missing name stays as it is, and `null` clears it.
+custom_fields:
+  # Values: 🔥, 🕯️
+  size: 🔥
+  team: meteo-team
+# The parent ticket. To change it, provide only `key`, as `{key: SAT-2}`.
+parent: {key: SAT-2}
+# Names of the ticket's sprints. Replaced whole when edited.
+# Not ended: All Sprint 2
+sprints: [All Sprint 1, All Sprint 2]
+# Replaced whole when edited.
+# In the local copy: backend
+labels: [backend]
+# Replaced whole when edited.
+# Values: import
+components: [import]
+# Markdown.
+description: The import fails **silently** when the provider times out.
+# Each as `{from: SAT-7, relation: blocks, to: SAT-9}`. Both ends are required, except when creating, where a
+# missing end means the new ticket.
+# Replaced whole when edited. Links that aren't stored, such as those to a space not in the config, are left
+# untouched.
+# Relations: blocks, relates to
+links:
+  - {from: SAT-7, relation: blocks, to: SAT-9}
+  - {from: SAT-4, relation: blocks, to: SAT-7}

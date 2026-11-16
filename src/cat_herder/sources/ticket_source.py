@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Protocol
 
-from cat_herder.domain.ticket import Ticket
+from cat_herder.domain.ticket import AllowedValues, Ticket
 
 
 class TicketSource(Protocol):
@@ -56,6 +56,25 @@ class TicketSource(Protocol):
             TicketNotFound: if the source has no ticket with that key.
             WriteIncomplete: if a call that writes fails.
             SourceError: if the source doesn't take a value, or answers with any other error.
+        """
+        ...
+
+    def creatable_values(self, space: str, type_name: str | None) -> AllowedValues:
+        """The values a new ticket of that type, or of any type, can take in the space.
+
+        Raises:
+            SourceUnreachable: if the source can't be reached.
+            SourceError: if the space has no type with that name, or the source answers with any other error.
+        """
+        ...
+
+    def editable_values(self, key: str) -> AllowedValues:
+        """The values the ticket can take now, as creatable_values gives them, with only the statuses it can go to.
+
+        Raises:
+            SourceUnreachable: if the source can't be reached.
+            TicketNotFound: if the source has no ticket with that key.
+            SourceError: if the source answers with any other error.
         """
         ...
 

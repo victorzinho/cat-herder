@@ -1,0 +1,45 @@
+# A new ticket in sat, for cat-herder create. Fill in at least the title and type; other empty fields are left to the source.
+title: ''
+# Slug of the project. Required when creating, and read-only when editing.
+project: sat
+# The source's name for the ticket type.
+# In the local copy: Sub-task, Task
+type: ''
+# The source's name for the status, with no translation.
+# In the local copy: Done, In progress, To do
+status: ''
+# The source's name for the priority, with no translation. Left out when creating, the source's default.
+# In the local copy: High
+priority: null
+# Person slug. `unknown (<source ID>)` when the source's user has no entry in `people`, which can't be written.
+# People: ana
+assignee: null
+points: null
+# Independent from `points`, and either can be empty.
+estimated_hours: null
+# The fields in the source's `custom_fields`, by name. A name that isn't configured explodes.
+# When editing, a missing name stays as it is, and `null` clears it.
+custom_fields:
+  # In the local copy: 🔥
+  size: null
+  # In the local copy: meteo-team
+  team: null
+# The parent ticket. To change it, provide only `key`, as `{key: SAT-2}`.
+parent: null
+# Names of the ticket's sprints. Replaced whole when edited.
+# Not ended: All Sprint 2, All Sprint 3
+sprints: []
+# Replaced whole when edited.
+# In the local copy: backend
+labels: []
+# Replaced whole when edited.
+# In the local copy: import
+components: []
+# Markdown.
+description: null
+# Each as `{from: SAT-7, relation: blocks, to: SAT-9}`. Both ends are required, except when creating, where a
+# missing end means the new ticket.
+# Replaced whole when edited. Links that aren't stored, such as those to a space not in the config, are left
+# untouched.
+# Relations in the local copy: blocks
+links: []
