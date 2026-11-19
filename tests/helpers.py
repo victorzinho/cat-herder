@@ -150,6 +150,9 @@ def new_time_origin(**overrides: Any) -> TimeOrigin:
     return replace(_TIME_ORIGIN, **overrides)
 
 
+CONFIG_EXAMPLE = Path(__file__).parents[1] / 'docs' / 'config.example.yaml'
+
+
 def resource(name: str) -> Path:
     """The test resource at that path, relative to tests/resources, such as cli/workspace/config.yaml."""
     return Path(__file__).parent / 'resources' / name

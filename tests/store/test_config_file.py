@@ -16,7 +16,7 @@ from cat_herder.domain.config import (
     TogglSourceConfig,
 )
 from cat_herder.store.config_file import CONFIG_PATH_ENV, ConfigError, load_config
-from tests.helpers import parse, resource
+from tests.helpers import CONFIG_EXAMPLE, parse, resource
 
 
 @pytest.mark.parametrize(('environ', 'expected_path'), [
@@ -54,15 +54,15 @@ def test_load_config_reads_relative_paths_from_the_configs_directory(
     )
 
 
-def test_load_config_builds_every_option() -> None:
+def test_load_config_builds_the_docs_example() -> None:
     # WHEN
-    config = load_config({CONFIG_PATH_ENV: str(resource('config/every-option.yaml'))})
+    config = load_config({CONFIG_PATH_ENV: str(CONFIG_EXAMPLE)})
 
     # THEN
     assert config == Config(
-        data_dir=Path.home() / 'cat-herder-data',
+        data_dir=Path.home() / '.local' / 'share' / 'cat-herder',
         default_non_ticket_percent=20,
-        capacity_margin_hours=5,
+        capacity_margin_hours=2,
         sources=(
             JiraSourceConfig(
                 slug='jira',
@@ -90,18 +90,21 @@ def test_load_config_builds_every_option() -> None:
         people=(
             Person(
                 slug='ana',
-                identity_by_source={'jira': 'abc123', 'toggl': 456},
+                identity_by_source={'jira': 'identity', 'toggl': 456},
                 weekly_hours=30,
                 hours_by_project={'sat': 8},
             ),
         ),
-        repositories=(Repository(slug='sat', path=Path('/code/sat')),),
+        repositories=(
+            Repository(slug='sat', path=Path('/code/sat')),
+            Repository(slug='sat-meteo', path=Path('/code/sat-meteo')),
+        ),
         projects=(
             Project(
                 slug='sat',
                 tickets=TicketOrigin(source='jira', space='SAT'),
                 time=TimeOrigin(source='toggl', spaces=('SAT-2025', 'SAT-2026')),
-                repositories=('sat',),
+                repositories=('sat', 'sat-meteo'),
             ),
             Project(
                 slug='admin', tickets=None, time=TimeOrigin(source='toggl', spaces=('Admin',))

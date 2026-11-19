@@ -5,18 +5,18 @@ import yaml
 
 from cat_herder.cli import main
 from cat_herder.store.config_file import CONFIG_PATH_ENV, load_config
-from tests.helpers import config_schema, resource
+from tests.helpers import CONFIG_EXAMPLE, config_schema, resource
 
 
 @pytest.mark.parametrize('config', [
-    pytest.param('cli/workspace/config.yaml', id='workspace'),
-    pytest.param('config/every-option.yaml', id='every-option'),
+    pytest.param(resource('cli/workspace/config.yaml'), id='workspace'),
+    pytest.param(CONFIG_EXAMPLE, id='docs-example'),
 ])
 def test_without_arguments_prints_the_whole_config_loading_as_the_same(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], config: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], config: Path
 ) -> None:
     # GIVEN
-    monkeypatch.setenv(CONFIG_PATH_ENV, str(resource(config)))
+    monkeypatch.setenv(CONFIG_PATH_ENV, str(config))
 
     # WHEN
     exit_code = main(['config', 'show'])
@@ -27,7 +27,7 @@ def test_without_arguments_prints_the_whole_config_loading_as_the_same(
     shown.write_text(output)
     assert exit_code == 0
     assert list(config_schema().iter_errors(yaml.safe_load(output))) == []  # pyright: ignore[reportUnknownMemberType]
-    assert load_config({CONFIG_PATH_ENV: str(shown)}) == load_config({CONFIG_PATH_ENV: str(resource(config))})
+    assert load_config({CONFIG_PATH_ENV: str(shown)}) == load_config({CONFIG_PATH_ENV: str(config)})
 
 
 def test_without_arguments_prints_absolute_paths(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

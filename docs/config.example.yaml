@@ -1,0 +1,84 @@
+# Schema in src/cat_herder/store/schemas/config.schema.yaml
+
+# Directory for the local database and downloaded attachments.
+# `~` expands to the home directory, and a relative path is relative to this file's directory.
+data_dir: ~/.local/share/cat-herder
+
+# Optional. Share of capacity (0-100) set aside for non-ticket work when planning a sprint, for projects with no ended
+# sprints or no time source. Without it, those projects set nothing aside.
+default_non_ticket_percent: 20
+
+# Optional, 1 by default. How many hours assigned above or below a capacity for tickets sprint reports accept before
+# listing it in `wont_fit` or `spare_capacity`.
+capacity_margin_hours: 2
+
+# Ticket and time systems, by slug. The slug qualifies keys, as in `jira:SAT-7`.
+sources:
+  jira:
+    type: jira
+    url: https://example.atlassian.net
+    # `read-only` refuses anything that writes to this source; `full` allows it.
+    access: full
+    # Data fetched this recently isn't fetched again.
+    fetch_window_seconds: 60
+    # This Jira's names for the statuses that count as done.
+    done_statuses: [Done]
+    # Optional. This Jira's names for the statuses of tickets dropped without being done. Without it, they count as open.
+    discarded_statuses: [Cancelled]
+    # Optional. This Jira's wording for "A blocks B". Without it, sprint reports don't show blocked tickets.
+    blocking_relation: blocks
+    # Optional. IDs of the fields that differ in every Jira. A field left out is treated as not existing here.
+    fields:
+      points: customfield_10035
+      sprints: customfield_10020
+    # Optional. Extra ticket fields to carry, by a slug of your choice, with the Jira field ID as the value.
+    # Only text, number and single-select fields. Nothing is calculated from them.
+    custom_fields:
+      size: customfield_10043
+    # Where to read each credential, when the tool first contacts the source:
+    # `{env: NAME}` for an environment variable, or `{command: ...}` for a command that prints it, run without a shell.
+    credentials:
+      email: {env: JIRA_EMAIL}
+      token: {command: pass show jira/token}
+  toggl:
+    type: toggl
+    workspace: 123
+    access: read-only
+    # Toggl's API quota is small, so a longer window than Jira's.
+    fetch_window_seconds: 900
+    # Date the first fetch starts from. Earlier entries are never fetched.
+    history_from: 2026-01-01T00:00:00+01:00
+    credentials:
+      token: {env: TOGGL_TOKEN}
+
+# Optional. People, by slug. Someone with no entry here appears as unknown, with their ID in the source, and their
+# hours still count.
+people:
+  ana:
+    # This person's ID in each source, by source slug.
+    identities: {jira: identity, toggl: 456}
+    # Optional. Without it, their capacity counts as 0.
+    weekly_capacity:
+      # Total hours per week.
+      hours: 30
+      # Optional. Hours per week for each project, by project slug. A project left out counts as 0.
+      projects: {sat: 8}
+
+# Optional. Local git repositories, by slug, with the path to the main repository, read as `data_dir` is.
+# Its worktrees count as the same repository.
+repositories:
+  sat: /code/sat
+  sat-meteo: /code/sat-meteo
+
+# Projects, by slug. Each needs `tickets`, `time`, or both.
+projects:
+  sat:
+    # Optional. Where its tickets come from: a ticket source's slug and the space's key in it.
+    tickets: {source: jira, space: SAT}
+    # Optional. Where its time entries come from: a time source's slug and the names of its spaces, such as Toggl
+    # projects. A space can't be in two projects. Without it, the project reports "no time source", not 0 h.
+    time: {source: toggl, spaces: [SAT-2025, SAT-2026]}
+    # Optional. Slugs of its repositories. They break ties when a key's prefix is in several sources.
+    repositories: [sat, sat-meteo]
+  admin:
+    time: {source: toggl, spaces: [Admin]}

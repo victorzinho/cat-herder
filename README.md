@@ -53,7 +53,7 @@ projects:
 - `history_from`: how far back to read Toggl entries.
 - `credentials`: where to read each credential: `{env: NAME}` for an environment variable, or `{command: ...}` for a command that prints it, such as your secret store's. They're read only when the tool contacts the source.
 
-The tool won't run without a config. To keep it somewhere else, point `CAT_HERDER_CONFIG` at it.
+The tool won't run without a config. To keep it somewhere else, point `CAT_HERDER_CONFIG` at it. [config.example.yaml](docs/config.example.yaml) shows every option.
 
 Then run `cat-herder --help` to see everything it can do.
 
@@ -68,5 +68,5 @@ Then run `cat-herder --help` to see everything it can do.
 ## Learn more
 
 - [Model](docs/model.md): how the concepts fit together
-- [Config schema](src/cat_herder/store/schemas/config.schema.yaml): every config option
+- [Config example](docs/config.example.yaml): every config option
 - [Ticket schema](src/cat_herder/cli/schemas/ticket.schema.yaml): the format for reading, creating and editing tickets
