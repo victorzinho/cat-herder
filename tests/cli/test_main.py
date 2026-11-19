@@ -49,7 +49,9 @@ def test_any_other_error_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.parametrize('command', [
     pytest.param(['create', str(resource('cli/ticket-sat.yaml'))], id='create'),
+    pytest.param(['create', '--dry-run', str(resource('cli/ticket-sat.yaml'))], id='create-dry-run'),
     pytest.param(['edit', 'SAT-7', str(resource('cli/ticket-sat.yaml'))], id='edit'),
+    pytest.param(['edit', '--dry-run', 'SAT-7', str(resource('cli/ticket-sat.yaml'))], id='edit-dry-run'),
     pytest.param(['comment', 'SAT-7', 'Done'], id='comment'),
     pytest.param(['template', '--project', 'sat'], id='create-template'),
     pytest.param(['template', 'SAT-7'], id='edit-template'),

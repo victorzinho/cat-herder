@@ -54,6 +54,37 @@ def test_edit_reads_a_partial_ticket_from_stdin(jira_api: JiraApi, monkeypatch: 
     ]
 
 
+def test_edit_dry_run_says_it_would_work_without_writing(
+    jira_api: JiraApi, tmp_path: Path, capsys: CaptureFixture[str]
+) -> None:
+    # GIVEN
+    edited = tmp_path / 'sat-7.yaml'
+    edited.write_text('title: Retry meteo imports\nstatus: Done\n')
+
+    # WHEN
+    exit_code = main(['edit', '--dry-run', 'SAT-7', str(edited)])
+
+    # THEN
+    assert (exit_code, capsys.readouterr()) == (0, ('Dry run: edit would work on SAT-7\n', ''))
+    assert jira_api.writes() == []
+
+
+def test_edit_dry_run_fails_for_a_value_jira_doesnt_take(
+    jira_api: JiraApi, tmp_path: Path, capsys: CaptureFixture[str]
+) -> None:
+    # GIVEN
+    edited = tmp_path / 'sat-7.yaml'
+    edited.write_text('title: Retry meteo imports\nstatus: Blocked\n')
+
+    # WHEN
+    exit_code = main(['edit', '--dry-run', 'SAT-7', str(edited)])
+
+    # THEN
+    error = "cat-herder: SAT-7 can't go to Blocked in jira, only to: Done\n"
+    assert (exit_code, capsys.readouterr()) == (1, ('', error))
+    assert jira_api.writes() == []
+
+
 def test_edit_keeps_the_ticket_as_refreshed_when_the_write_fails_partway(
     jira_api: JiraApi, tmp_path: Path, capsys: CaptureFixture[str]
 ) -> None:

@@ -59,6 +59,25 @@ class TicketSource(Protocol):
         """
         ...
 
+    def check_create_ticket(self, ticket: Ticket) -> None:
+        """Find what create_ticket finds before creating the ticket, without creating it.
+
+        Raises:
+            SourceUnreachable: if the source can't be reached.
+            SourceError: if the source doesn't take a value, or answers with any other error.
+        """
+        ...
+
+    def check_update_ticket(self, edited: Ticket) -> None:
+        """Find what update_ticket finds before writing, without writing.
+
+        Raises:
+            SourceUnreachable: if the source can't be reached.
+            TicketNotFound: if the source has no ticket with that key.
+            SourceError: if the source doesn't take a value, or answers with any other error.
+        """
+        ...
+
     def creatable_values(self, space: str, type_name: str | None) -> AllowedValues:
         """The values a new ticket of that type, or of any type, can take in the space.
 

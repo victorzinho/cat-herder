@@ -15,11 +15,14 @@ from cat_herder.store.git_repositories import current_git_repository
 def configure(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('key', help='the ticket key, such as SAT-7, or jira:SAT-7 to name its source')
     parser.add_argument('file', nargs='?', type=Path, help='the ticket YAML; stdin if left out')
+    parser.add_argument(
+        '--dry-run', action='store_true', help='check everything edit checks before writing, without writing'
+    )
     parser.set_defaults(run=run)
 
 
 def run(args: argparse.Namespace, config: Config, environ: Mapping[str, str], cwd: Path) -> int:
-    """Write the fields in the ticket YAML that differ from the ticket's.
+    """Write the fields in the ticket YAML that differ from the ticket's, or with --dry-run, only check they can be.
 
     Returns:
         The exit code: 1 if the source doesn't have the ticket.
@@ -43,6 +46,10 @@ def run(args: argparse.Namespace, config: Config, environ: Mapping[str, str], cw
         } | {sprint.name: sprint for sprint in ticket.sprints}
         sprint_names = tickets_service.sprint_names(ticket.source)
         edited = edited_ticket(document, ticket, config, sprint_by_name, sprint_names)
+        if args.dry_run:
+            tickets_service.check_edit(edited)
+            print(f'Dry run: edit would work on {args.key}')
+            return 0
         try:
             tickets_service.edit(edited)
         except WriteIncomplete as error:

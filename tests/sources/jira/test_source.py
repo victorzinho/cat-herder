@@ -260,8 +260,12 @@ def test_create_ticket_creates_it_with_its_fields_then_writes_its_links_and_stat
         {'custom_fields': {'colour': 'red'}}, 'jira has no custom field colour in the config', id='custom-field'
     ),
 ])
-def test_create_ticket_raises_without_creating_it_for_a_value_jira_doesnt_take(
-    fields: dict[str, Any], message: str
+@pytest.mark.parametrize('method', [
+    pytest.param('create_ticket', id='create'),
+    pytest.param('check_create_ticket', id='check'),
+])
+def test_create_ticket_and_its_check_raise_without_creating_it_for_a_value_jira_doesnt_take(
+    fields: dict[str, Any], message: str, method: str
 ) -> None:
     # GIVEN
     jira_api = JiraApi()
@@ -269,7 +273,7 @@ def test_create_ticket_raises_without_creating_it_for_a_value_jira_doesnt_take(
 
     # WHEN
     with pytest.raises(SourceError, match=re.escape(message)):
-        cut.create_ticket(new_ticket(key='', **fields))
+        getattr(cut, method)(new_ticket(key='', **fields))
 
     # THEN
     assert jira_api.writes() == []
@@ -407,7 +411,13 @@ def test_update_ticket_clears_fields_set_to_none() -> None:
         id='ended-sprint',
     ),
 ])
-def test_update_ticket_raises_without_writing_for_a_value_jira_doesnt_take(edits: dict[str, Any], message: str) -> None:
+@pytest.mark.parametrize('method', [
+    pytest.param('update_ticket', id='update'),
+    pytest.param('check_update_ticket', id='check'),
+])
+def test_update_ticket_and_its_check_raise_without_writing_for_a_value_jira_doesnt_take(
+    edits: dict[str, Any], message: str, method: str
+) -> None:
     # GIVEN
     jira_api = JiraApi()
     cut = _source(jira_api)
@@ -415,7 +425,7 @@ def test_update_ticket_raises_without_writing_for_a_value_jira_doesnt_take(edits
 
     # WHEN
     with pytest.raises(SourceError, match=re.escape(message)):
-        cut.update_ticket(replace(sat_7, **edits))
+        getattr(cut, method)(replace(sat_7, **edits))
 
     # THEN
     assert jira_api.writes() == []
@@ -481,6 +491,8 @@ def test_writes_raise_ticket_not_found_for_a_ticket_jira_doesnt_have() -> None:
     # WHEN / THEN
     with pytest.raises(TicketNotFound, match='jira has no ticket SAT-9'):
         cut.update_ticket(new_ticket(key='SAT-9'))
+    with pytest.raises(TicketNotFound, match='jira has no ticket SAT-9'):
+        cut.check_update_ticket(new_ticket(key='SAT-9'))
     with pytest.raises(TicketNotFound, match='jira has no ticket SAT-9'):
         cut.add_comment('SAT-9', 'Gone')
 

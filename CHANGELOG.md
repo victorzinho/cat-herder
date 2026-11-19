@@ -6,6 +6,7 @@
 - New command `template`: a ticket YAML to fill in for `create`, or to change for `edit`, with each field's description
   and the values the source takes.
 - New `docs/config.example.yaml`: every config option, commented.
+- New `--dry-run` on `create` and `edit`: everything they check before writing, Jira's checks included, without writing.
 
 ## 0.1.0
 

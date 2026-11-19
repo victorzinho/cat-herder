@@ -13,11 +13,19 @@ from cat_herder.store.git_repositories import current_git_repository
 
 def configure(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('file', nargs='?', type=Path, help='the ticket YAML; stdin if left out')
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help=(
+            'check everything create checks before creating, without creating: '
+            'not the status or the linked keys, which are checked once created'
+        ),
+    )
     parser.set_defaults(run=run)
 
 
 def run(args: argparse.Namespace, config: Config, environ: Mapping[str, str], cwd: Path) -> int:
-    """Create the ticket in the ticket YAML, and print its key.
+    """Create the ticket in the ticket YAML, and print its key, or with --dry-run, only check it can be.
 
     Returns:
         The exit code.
@@ -33,6 +41,11 @@ def run(args: argparse.Namespace, config: Config, environ: Mapping[str, str], cw
             for name in document.get('sprints', [])
             if (sprints := tickets_service.find_sprints(name, origin.source))
         }
-        key = tickets_service.create(new_ticket(document, origin, config, sprint_by_name))
+        ticket = new_ticket(document, origin, config, sprint_by_name)
+        if args.dry_run:
+            tickets_service.check_create(ticket)
+            print(f'Dry run: create would work in {document["project"]}')
+            return 0
+        key = tickets_service.create(ticket)
     print(key)
     return 0

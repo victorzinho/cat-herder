@@ -194,6 +194,25 @@ class TicketsService:
             with suppress(SourceError, SourceUnreachable):
                 self._fetch(edited.source, edited.key)
 
+    def check_create(self, ticket: Ticket) -> None:
+        """Find what create finds before creating the ticket, as TicketSource.check_create_ticket does.
+
+        Raises:
+            SourceUnreachable: if the source can't be reached.
+            SourceError: if the source doesn't take a value, or answers with any other error.
+        """
+        self._source_by_slug[ticket.source].check_create_ticket(ticket)
+
+    def check_edit(self, edited: Ticket) -> None:
+        """Find what edit finds before writing, as TicketSource.check_update_ticket does.
+
+        Raises:
+            SourceUnreachable: if the source can't be reached.
+            TicketNotFound: if the source doesn't have the ticket.
+            SourceError: if the source doesn't take a value, or answers with any other error.
+        """
+        self._source_by_slug[edited.source].check_update_ticket(edited)
+
     def comment(self, key: str, body: str) -> None:
         """Add a comment, in markdown, to the ticket.
 

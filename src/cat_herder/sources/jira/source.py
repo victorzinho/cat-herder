@@ -77,22 +77,7 @@ class JiraSource:
 
         Fields go with the creation, then each link and the status, as update_ticket writes them.
         """
-        if not ticket.title or not ticket.type:
-            raise SourceError(f'{self._config.slug} needs a title and a type to create a ticket')
-        blank = Ticket(
-            source=ticket.source,
-            key=ticket.key,
-            space=ticket.space,
-            title='',
-            type='',
-            status='',
-            created=ticket.created,
-            updated=ticket.updated,
-        )
-        creatable = self._creatable_fields(ticket.space, ticket.type)
-        _, fields = self._fields(blank, ticket, lambda: creatable)
-        if ticket.links:
-            self._link_type_by_relation(ticket.links)
+        fields = self._creation_fields(ticket)
         created: JsonObject = self._client.post('issue', {'fields': {'project': {'key': ticket.space}, **fields}})
         key: str = created['key']
         ticket = _with_key(ticket, key)
@@ -111,14 +96,15 @@ class JiraSource:
         Fields go in one call, then each link added and each one removed, and the status last, as reaching it can
         leave fields uneditable.
         """
-        issue = self._get_issue(edited.key, tuple(mapping.ticket_fields(self._config)))
-        current = mapping.ticket(self._config, issue, comments=[], histories=[], children=[])
-        writes = [
-            *self._field_writes(current, edited),
-            *self._link_writes(issue, current, edited),
-            *self._status_writes(current, edited),
-        ]
-        _write_all(edited.key, writes)
+        _write_all(edited.key, self._update_writes(edited))
+
+    def check_create_ticket(self, ticket: Ticket) -> None:
+        """See TicketSource.check_create_ticket."""
+        self._creation_fields(ticket)
+
+    def check_update_ticket(self, edited: Ticket) -> None:
+        """See TicketSource.check_update_ticket."""
+        self._update_writes(edited)
 
     def creatable_values(self, space: str, type_name: str | None) -> AllowedValues:
         """See TicketSource.creatable_values. Statuses are those of the type's workflow."""
@@ -161,6 +147,36 @@ class JiraSource:
             self._client.post(f'issue/{quote(key, safe="")}/comment', {'body': markdown_to_adf(body)})
         except JiraNotFound as error:
             raise TicketNotFound(f'{self._config.slug} has no ticket {key}') from error
+
+    def _creation_fields(self, ticket: Ticket) -> JsonObject:
+        # The issue fields to create the ticket with, once every value is found to be taken.
+        if not ticket.title or not ticket.type:
+            raise SourceError(f'{self._config.slug} needs a title and a type to create a ticket')
+        blank = Ticket(
+            source=ticket.source,
+            key=ticket.key,
+            space=ticket.space,
+            title='',
+            type='',
+            status='',
+            created=ticket.created,
+            updated=ticket.updated,
+        )
+        creatable = self._creatable_fields(ticket.space, ticket.type)
+        _, fields = self._fields(blank, ticket, lambda: creatable)
+        if ticket.links:
+            self._link_type_by_relation(ticket.links)
+        return fields
+
+    def _update_writes(self, edited: Ticket) -> list['_Write']:
+        # The writes for what differs, once every value is found to be taken.
+        issue = self._get_issue(edited.key, tuple(mapping.ticket_fields(self._config)))
+        current = mapping.ticket(self._config, issue, comments=[], histories=[], children=[])
+        return [
+            *self._field_writes(current, edited),
+            *self._link_writes(issue, current, edited),
+            *self._status_writes(current, edited),
+        ]
 
     def _get_issue(self, key: str, fields: tuple[str, ...]) -> JsonObject:
         try:
