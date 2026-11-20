@@ -152,6 +152,27 @@ def test_project_of_time_entry_returns_the_project_with_time_in_its_space() -> N
     assert (project_sat, project_other) == (sat, None)
 
 
+@pytest.mark.parametrize(('project_slugs', 'origins'), [
+    pytest.param((), [('jira', 'SAT'), ('jira', 'WEB'), ('other', 'SAT')], id='every-project'),
+    pytest.param(('web', 'sat-meteo'), [('jira', 'WEB'), ('other', 'SAT')], id='those-projects'),
+])
+def test_ticket_origins_are_those_of_the_projects_each_once_sorted(
+    project_slugs: tuple[str, ...], origins: list[tuple[str, str]]
+) -> None:
+    # GIVEN web and sat-meteo-web sharing WEB, and admin with time only
+    config = _config(projects=(
+        _ticket_project('web', 'jira', 'WEB'),
+        _ticket_project('sat-meteo', 'other', 'SAT'),
+        _ticket_project('sat', 'jira', 'SAT'),
+        _ticket_project('sat-meteo-web', 'jira', 'WEB'),
+        _time_project('admin', 'toggl', 'Admin'),
+    ))
+
+    # WHEN / THEN
+    expected = [TicketOrigin(source=source, space=space) for source, space in origins]
+    assert config.ticket_origins(project_slugs) == expected
+
+
 @pytest.mark.parametrize(('prefix', 'expected'), [
         pytest.param('SAT', ('jira', 'other'), id='in-two-sources'),
         pytest.param('WEB', ('jira',), id='in-one-source'),

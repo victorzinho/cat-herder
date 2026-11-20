@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -10,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from cat_herder.domain.config import Config, Person, Project, TicketOrigin
 from cat_herder.domain.ticket import Ticket
+from cat_herder.embeddings.encoder import Encoder
 from cat_herder.services.tickets_service import CURRENT_SPRINT, KeyNotResolved, TicketsService
 from cat_herder.sources.errors import SourceUnreachable, WriteIncomplete
 from cat_herder.sources.jira.client import JiraClient
@@ -17,7 +19,7 @@ from cat_herder.sources.jira.source import JiraSource
 from cat_herder.store.sprint_repository import SprintRepository
 from cat_herder.store.ticket_repository import TicketRepository
 from cat_herder.store.ticket_space_sync_repository import TicketSpaceSyncRepository
-from tests.helpers import new_link, new_sprint, new_ticket, new_toggl_source_config, parse
+from tests.helpers import FakeEncoder, new_link, new_sprint, new_ticket, new_toggl_source_config, parse
 from tests.jira_api import JIRA_CONFIG, JiraApi
 
 WINDOW = timedelta(seconds=JIRA_CONFIG.fetch_window_seconds)
@@ -328,6 +330,19 @@ def test_list_tickets_syncs_and_lists_the_full_tickets_matching_every_filter(
     assert [ticket.key for ticket in tickets] == keys
 
 
+def test_search_syncs_and_searches_the_full_tickets_of_those_projects_and_statuses(
+    session: Session, jira_api: JiraApi
+) -> None:
+    # GIVEN the SAT space, where SAT-7 is in progress, and every ticket mentions imports
+    cut = _service(session, jira_api, load_encoder=FakeEncoder)
+
+    # WHEN
+    hits = cut.search('imports', project_slugs=['sat'], statuses=['To do', 'Done'])
+
+    # THEN
+    assert {hit.ticket.key for hit in hits} == {'SAT-8', 'SAT-10'}
+
+
 def test_list_tickets_answers_from_the_local_copy_when_unreachable(
     session: Session, jira_api: JiraApi, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -451,9 +466,11 @@ def test_source_of_resolves_the_key_to_its_source(session: Session) -> None:
     assert cut.source_of('jira:SAT-7') == 'jira'
 
 
-def _service(session: Session, jira_api: JiraApi, config: Config = CONFIG) -> TicketsService:
+def _service(
+    session: Session, jira_api: JiraApi, config: Config = CONFIG, load_encoder: Callable[[], Encoder] | None = None
+) -> TicketsService:
     client = JiraClient(JIRA_CONFIG.url, lambda: ('ana@example.com', 'token'), transport=httpx.MockTransport(jira_api))
-    return TicketsService(config, session, (JiraSource(JIRA_CONFIG, client),), None)
+    return TicketsService(config, session, (JiraSource(JIRA_CONFIG, client),), None, load_encoder)
 
 
 def _save_in_local_copy(session: Session, ticket: Ticket, fetched_at: datetime) -> None:

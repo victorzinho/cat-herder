@@ -1,8 +1,10 @@
 import logging
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from contextlib import suppress
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from functools import partial
+from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
@@ -13,6 +15,10 @@ from cat_herder.sources.ticket_source import TicketSource
 from cat_herder.store.sprint_repository import SprintRepository
 from cat_herder.store.ticket_repository import TicketRepository
 from cat_herder.store.ticket_space_sync_repository import TicketSpaceSyncRepository
+
+if TYPE_CHECKING:
+    from cat_herder.embeddings.encoder import Encoder
+    from cat_herder.services.search_service import SearchHit
 
 _logger = logging.getLogger(__name__)
 
@@ -31,12 +37,21 @@ class TicketsService:
     resolve from the config, with the current git repository's projects breaking ties between sources.
 
     Writes need the source to be reachable, and store the ticket as the source has it after.
+
+    Searches load the encoder with load_encoder from the data directory.
     """
 
     def __init__(
-        self, config: Config, session: Session, sources: Iterable[TicketSource], git_repository: str | None
+        self,
+        config: Config,
+        session: Session,
+        sources: Iterable[TicketSource],
+        git_repository: str | None,
+        load_encoder: Callable[[], 'Encoder'] | None = None,
     ) -> None:
         self._config = config
+        self._session = session
+        self._load_encoder = load_encoder
         self._ticket_repository = TicketRepository(session)
         self._sprint_repository = SprintRepository(session)
         self._ticket_space_sync_repository = TicketSpaceSyncRepository(session)
@@ -67,7 +82,7 @@ class TicketsService:
             force_fetch: re-read every space whole, deleting the local copy of tickets gone from it.
             project_slugs: the projects whose spaces to fetch. Empty fetches every project's.
         """
-        for origin in self._origins(project_slugs):
+        for origin in self._config.ticket_origins(project_slugs):
             self._sync_space(origin, force_fetch)
 
     def list_tickets(
@@ -80,7 +95,7 @@ class TicketsService:
         force_fetch: bool = False,
     ) -> list[Ticket]:
         """The full tickets matching every filter given, sorted by key, after syncing their projects' spaces."""
-        origins = self._origins(project_slugs)
+        origins = self._config.ticket_origins(project_slugs)
         for origin in origins:
             self._sync_space(origin, force_fetch)
         current = sprint_name == CURRENT_SPRINT
@@ -93,6 +108,37 @@ class TicketsService:
             updated_since=updated_since,
         )
         return sorted(tickets, key=lambda ticket: key_order(ticket.key))
+
+    def search(
+        self,
+        query: str,
+        project_slugs: Sequence[str] = (),
+        statuses: Sequence[str] = (),
+        limit: int = 10,
+        force_fetch: bool = False,
+    ) -> list['SearchHit']:
+        """The full tickets matching the query by any of its words or related to it in meaning, best first, after
+        syncing their projects' spaces.
+
+        Without the encoder, the tickets match by words alone, with a warning.
+
+        Args:
+            query: words to find, or a description of what the ticket is about.
+            project_slugs: the projects to search. Empty searches every project.
+            statuses: the statuses the tickets must have one of. Empty takes any.
+            limit: how many tickets to return at most.
+            force_fetch: as for sync.
+        """
+        # Imported here, as numpy and the tokenizers take longer to import than most commands take to run.
+        from cat_herder.embeddings.encoder import load_encoder
+        from cat_herder.services.search_service import SearchService
+
+        origins = self._config.ticket_origins(project_slugs)
+        for origin in origins:
+            self._sync_space(origin, force_fetch)
+        tickets = self._ticket_repository.find(origins, statuses=statuses)
+        search = SearchService(self._session, self._load_encoder or partial(load_encoder, self._config.data_dir))
+        return search.search(query, tickets, limit)
 
     def find_sprints(self, name: str, source: str | None = None) -> list[Sprint]:
         """The stored sprints with that name, ordered by source.
@@ -245,15 +291,6 @@ class TicketsService:
     def _assignee_by_source(self, person_slug: str) -> dict[str, str]:
         person = self._config.person(person_slug)
         return {source: str(identity) for source, identity in person.identity_by_source.items()}
-
-    def _origins(self, project_slugs: Sequence[str]) -> list[TicketOrigin]:
-        # The ticket origins of those projects, or of every project, each once.
-        origins = {
-            project.tickets
-            for project in self._config.projects
-            if project.tickets and (not project_slugs or project.slug in project_slugs)
-        }
-        return sorted(origins, key=lambda origin: (origin.source, origin.space))
 
     def _resolve(self, key: str) -> tuple[str, str]:
         # returns the source and its own key

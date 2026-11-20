@@ -262,6 +262,7 @@ def _ticket_from_rows(row: TicketRow, links: Sequence[LinkRow]) -> Ticket:
     # Links are the ones touching the ticket, from either end.
     assert row.space and row.created and row.updated
     return Ticket(
+        internal_id=row.id,
         source=row.source,
         key=row.key,
         space=row.space,

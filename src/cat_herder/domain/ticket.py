@@ -151,6 +151,8 @@ class Ticket:
     related_summaries: tuple[TicketSummary, ...] = ()
     """The tickets its parent and links name, as they are now."""
     changes: tuple[Change, ...] = ()
+    internal_id: int | None = field(default=None, compare=False)
+    """The local copy's own ID for it, set only on tickets read from it. Left out of comparisons."""
 
     def as_of(self, when: datetime) -> 'Ticket':
         """The ticket as it was at that moment, undoing the Changes after it.

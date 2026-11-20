@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from cat_herder.cli.ticket_yaml import tickets_to_yaml
+from cat_herder.cli.validation import unknown_projects
 from cat_herder.domain.config import Config
 from cat_herder.services.tickets_service import CURRENT_SPRINT, TicketsService
 from cat_herder.sources.factory import build_ticket_sources
@@ -51,8 +52,7 @@ def run(args: argparse.Namespace, config: Config, environ: Mapping[str, str], cw
 def _usage_problem(args: argparse.Namespace, config: Config) -> str | None:
     if not any(getattr(args, name) for name in FILTERS):
         return 'give at least one filter'
-    projects = {project.slug for project in config.projects}
-    if unknown := [slug for slug in args.project if slug not in projects]:
+    if unknown := unknown_projects(config, args.project):
         return f'not configured projects: {", ".join(unknown)}'
     if args.assignee and args.assignee not in {person.slug for person in config.people}:
         return f'not a configured person: {args.assignee}'

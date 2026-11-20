@@ -1,3 +1,4 @@
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import StrEnum
@@ -301,6 +302,15 @@ class Config:
             ),
             None,
         )
+
+    def ticket_origins(self, project_slugs: Collection[str] = ()) -> list[TicketOrigin]:
+        """The ticket origins of those projects, or of every project, each once, sorted by source and space."""
+        origins = {
+            project.tickets
+            for project in self.projects
+            if project.tickets and (not project_slugs or project.slug in project_slugs)
+        }
+        return sorted(origins, key=lambda origin: (origin.source, origin.space))
 
     def ticket_sources(self) -> tuple[str, ...]:
         """Slugs of the ticket sources."""

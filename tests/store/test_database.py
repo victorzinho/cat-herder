@@ -8,6 +8,7 @@ from alembic.migration import MigrationContext
 import cat_herder.store
 from cat_herder.store.base import Base
 from cat_herder.store.database import open_database
+from cat_herder.store.ticket_search_repository import WORDS_TABLE
 
 
 def test_migrations_create_the_tables_as_declared(tmp_path: Path) -> None:
@@ -19,7 +20,13 @@ def test_migrations_create_the_tables_as_declared(tmp_path: Path) -> None:
 
     # WHEN
     with engine.connect() as connection:
-        differences = compare_metadata(MigrationContext.configure(connection), Base.metadata)
+        context = MigrationContext.configure(connection, opts={'include_name': _declarable})
+        differences = compare_metadata(context, Base.metadata)
 
     # THEN
     assert differences == []
+
+
+def _declarable(name: str | None, type_: str, _: object) -> bool:
+    # An FTS5 table, and the tables SQLite keeps behind it, named after it, can't be declared as SQLAlchemy tables.
+    return not (type_ == 'table' and name and name.startswith(WORDS_TABLE))

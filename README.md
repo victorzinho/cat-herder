@@ -9,6 +9,7 @@ With it, you can:
 - Review how a finished sprint went, from where each ticket ended up to the hours each person spent against their capacity
 - Check whether a planned sprint fits each person's capacity, and what's unassigned, unestimated or blocked
 - Follow a sprint in progress, from the hours done so far to whether the work left still fits
+- Find tickets by what they're about, even when they don't use the words you search for
 
 ## Quick setup
 
@@ -45,7 +46,7 @@ projects:
     repositories: [web]
 ```
 
-- `data_dir`: where the tool keeps its local copy of what it reads, and any attachments you download.
+- `data_dir`: where the tool keeps its local copy of what it reads, any attachments you download, and the model `search` downloads from Hugging Face the first time it runs (22 MB).
 - `fetch_window_seconds`: how long the tool trusts that copy before asking the source again. Toggl's is longer because its API quota is small.
 - `done_statuses`: which of your Jira's statuses count as done.
 - `blocking_relation`: your Jira's wording for "A blocks B". Sprint reports use it to show blocked tickets.

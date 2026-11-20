@@ -1,9 +1,13 @@
+import re
+import zlib
+from collections.abc import Sequence
 from dataclasses import replace
 from datetime import datetime, timedelta
 from importlib.resources import files
 from pathlib import Path
 from typing import Any
 
+import numpy
 import yaml
 from jsonschema import Draft202012Validator
 
@@ -19,6 +23,7 @@ from cat_herder.domain.ticket import (
     TicketSummary,
 )
 from cat_herder.domain.time_entry import TimeEntry
+from cat_herder.embeddings.encoder import Vectors
 
 
 def parse(value: str) -> datetime:
@@ -164,3 +169,40 @@ def config_schema() -> Draft202012Validator:
         yaml.safe_load(files('cat_herder.store').joinpath('schemas', 'config.schema.yaml').read_text()),
         format_checker=Draft202012Validator.FORMAT_CHECKER,
     )
+
+
+class FakeEncoder:
+    """An Encoder whose tokens are words, and whose meaning is theirs: words in one of the groups of synonyms embed
+    alike, and any other word as itself, so texts sharing no word or synonym are unrelated. It reads max_tokens words,
+    its two markers included, and records every text it encodes, in encoded.
+    """
+
+    def __init__(self, synonyms: Sequence[Sequence[str]] = (), max_tokens: int = 64, model: str = 'fake') -> None:
+        self._concept = {word: group[0] for group in synonyms for word in group}
+        self._max_tokens = max_tokens
+        self._model = model
+        self.encoded: list[str] = []
+
+    @property
+    def model(self) -> str:
+        return self._model
+
+    @property
+    def max_tokens(self) -> int:
+        return self._max_tokens
+
+    @property
+    def min_similarity(self) -> float:
+        return 0.0
+
+    def token_spans(self, text: str) -> list[tuple[int, int]]:
+        return [match.span() for match in re.finditer(r'\w+', text)]
+
+    def encode(self, texts: Sequence[str]) -> Vectors:
+        self.encoded += texts
+        vectors = numpy.zeros((len(texts), 256), dtype=numpy.float32)
+        for row, text in enumerate(texts):
+            words: list[str] = re.findall(r'\w+', text.lower())
+            for word in words[:self._max_tokens - 2]:
+                vectors[row, zlib.crc32(self._concept.get(word, word).encode()) % 256] += 1
+        return (vectors / numpy.maximum(numpy.linalg.norm(vectors, axis=1, keepdims=True), 1e-9)).astype(numpy.float32)

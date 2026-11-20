@@ -5,7 +5,7 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
-from cat_herder.cli.commands import comment, create, edit, report, show, sync, template
+from cat_herder.cli.commands import comment, create, edit, report, search, show, sync, template
 from cat_herder.cli.commands import config as config_command
 from cat_herder.cli.commands import list as list_command
 from cat_herder.cli.ticket_yaml import TicketYamlError
@@ -69,6 +69,14 @@ def main(argv: list[str] | None = None) -> int:
     ))
     report.configure(commands.add_parser(
         'report', help='report on a project or a sprint', description='Report on a project or a sprint, as YAML.'
+    ))
+    search.configure(commands.add_parser(
+        'search',
+        help='find tickets by exact words or meaning (semantic)',
+        description=(
+            'Find the tickets whose title, description or comments best match the query, by its words and by its '
+            'meaning, after syncing their projects. It downloads a 22 MB model the first time.'
+        ),
     ))
     show.configure(commands.add_parser('show', help='show one ticket', description='Show one ticket as YAML.'))
     sync.configure(commands.add_parser(
